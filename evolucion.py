@@ -36,7 +36,7 @@ def random_state(numStates, numLetters):
   """
   nextState = random.randrange(0, numStates)
   replaceLetter = random.randrange(0, numLetters)
-  movement = random.randrange(0, 1)
+  movement = random.randrange(0, 2)
   return { "nextState": nextState, "replaceLetter": replaceLetter, "movement": movement }
 
 # TODO(Uriel96)
@@ -52,9 +52,9 @@ def random_population():
   for i in range(POP_SIZE):
     table = []
     for row in range(max_row):
-      table[row] = []
+      table.append([])
       for column in range(max_column):
-        table[row][column] = random_state(max_row, max_column)
+        table[row].append(random_state(max_row, max_column))
     tables.append(table)
   return tables
 
@@ -110,7 +110,7 @@ def fitness(dna):
   are summed and then returned.
   """
   fitness = 0
-  for c in xrange(DNA_SIZE):
+  for c in range(DNA_SIZE):
     fitness += abs(ord(dna[c]) - ord(OPTIMAL[c]))
   return fitness
 """
@@ -144,6 +144,12 @@ if __name__ == "__main__":
   # Generate initial population. This will create a list of POP_SIZE strings,
   # each initialized to a sequence of random characters.
   population = random_population()
+
+  for i in range(POP_SIZE):
+    for row in range(3):
+      for column in range(3):
+        print(population[i][row][column])
+
 
   generation = []
 
