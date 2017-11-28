@@ -15,10 +15,11 @@ POP_SIZE    = 20
 GENERATIONS = 5000
 
 # columns -> language elements
-MAX_COLUMN = 2
+MAX_COLUMN = 5
 
 # rows -> number of states (minimum 3: initial, acceptance, rejection)
 MAX_ROW = 5
+
 MIN_COLUMN = 2
 MIN_ROW = 3
 
@@ -57,16 +58,15 @@ def random_state(numStates, numLetters):
 def random_population():
   tables = []
   for i in range(POP_SIZE):
-    num_rows = random.randrange(MIN_ROW, MAX_ROW+1)
-    num_columns = random.randrange(MIN_COLUMN, MAX_COLUMN+1)
     table = []
-    for row in range(num_rows):
+    for row in range(MAX_COLUMN):
       table.append([])
-      for column in range(num_columns):
-        table[row].append(random_state(num_rows, num_columns))
+      for column in range(MAX_COLUMN):
+        table[row].append(random_state(MAX_ROW, MAX_COLUMN))
     tables.append(table)
   return tables
 
+# TODO(Uriel96)
 def print_table(table):
   pp = pprint.PrettyPrinter(indent=4)
   pp.pprint(table)
@@ -84,7 +84,7 @@ def get_validation_set(parsed_input):
     return parsed_input[parsed_input.shape[0]/2, :]
 
 # Maps the symbol to its index in the transition table.
-def matrix_column(symbol)
+def matrix_column(symbol):
     try:
         LANGUAGE[symbol]
     except KeyError:
@@ -97,6 +97,8 @@ def predict(population, training_set):
 
     predict_matrix = []
 
+    #Erick, lo agregue para que no me marcara error
+    basestring = ""
     for example in training_set_y:
         assert isinstance(example, basestring)
         predict_row = []
@@ -132,7 +134,7 @@ def predict(population, training_set):
 
                 timeout += 1
 
-            if timout >= 1000
+            if timout >= 1000:
                 predict_row.append(False)
             # 1 is the row of the accepted state
             elif state is 1:
@@ -159,24 +161,37 @@ def augment_population(population):
 
 # TODO(Uriel96)
 def append_generation(population):
-    return None
+  new_population = []
+  for table in population:
+    #Pick Two Tables
+    table_A = pick_random_table(population)
+    table_B = pick_random_table(population)
+    print("Table A")
+    print_table(table_A)
+    print("Table B")
+    print_table(table_B)
+
+    #Cross Them
+    new_table = cross_over(table_A, table_B)
+    print("Cross-Over Table")
+    print_table(new_table)
+
+    #Mutate Table
+    mutation(new_table)
+
+    #Add It to New Population
+    new_population.append(new_table)
+  return new_population
 
 # TODO(Uriel96)
-def create_next_generation(population):
-    new_population = []
-    for table in population:
-      table_A = pick_random_table(population)
-      table_B = pick_random_table(population)
-      print_table(table_A)
-      print_table(table_B)
-      new_table = cross_over(table_A, table_B)
-      new_population.append(new_table)
-    return new_population
-
 def cross_over(table_A, table_B):
-  return []
+  pos = random.randrange(1, MAX_ROW-1)
+  return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
+# TODO(Uriel96)
 def pick_random_table(population):
+  #TODO: Pick Random Table Based on Fitness
+  '''
   index = 0
   r = random.randrange(0, 2)
   while r > 0:
@@ -184,6 +199,8 @@ def pick_random_table(population):
     index += 1
   index -= 1
   return population[index]
+  '''
+  return population[random.randrange(0, len(population))]
 
 
 # TODO(LewisErick)
@@ -217,25 +234,16 @@ def mutate(dna):
   return dna_out
 """
 
-def crossover(dna1, dna2):
-  """
-  Slices both dna1 and dna2 into two parts at a random index within their
-  length and merges them. Both keep their initial sublist up to the crossover
-  index, but their ends are swapped.
-  """
-  pos = int(random.random()*DNA_SIZE)
-  return (dna1[:pos]+dna2[pos:], dna2[:pos]+dna1[pos:])
-
 if __name__ == "__main__":
   # Paso 1: Generar Tablas Random
   # Generate initial population. This will create a list of POP_SIZE strings,
   # each initialized to a sequence of random characters.
   population = random_population()
 
-  for i in range(POP_SIZE):
-    print_table(population[i])
+  #for i in range(POP_SIZE):
+  #  print_table(population[i])
 
-  create_next_generation(population)
+  population = append_generation(population)
 
   '''
   generation = []
