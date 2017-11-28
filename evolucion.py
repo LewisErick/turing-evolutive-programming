@@ -46,7 +46,7 @@ def random_population():
   """
   max_column = 3
   max_row = 3
-  
+
   tables = []
   for i in range(POP_SIZE):
     table = []
@@ -56,6 +56,33 @@ def random_population():
         table[row].append(random_state(max_row, max_column))
     tables.append(table)
   return tables
+
+def get_training_set(parsed_input):
+    return None
+
+def get_validation_set(parsed_input):
+    return None
+
+def predict(population, training_set):
+    return None
+
+def calculate_performance(training_set, predicted_output_train):
+    return None
+
+def shrink_population(population):
+    return None
+
+def augment_population(population):
+    return None
+
+def append_generation(population):
+    return None
+
+def cross_over(population):
+    return None
+
+def mutation(population):
+    return None
 
 #
 # GA functions
@@ -103,63 +130,40 @@ if __name__ == "__main__":
   # each initialized to a sequence of random characters.
   population = random_population()
 
-  for i in range(POP_SIZE):
-    for row in range(3):
-      for column in range(3):
-        print(population[i][row][column])
-  
+  generation = []
 
-"""
-  # Simulate all of the generations.
-  for generation in range(GENERATIONS):
-    print("Generation %s... Random sample: '%s'" % (generation, population[0]))
-    weighted_population = []
+  # Parse Input
+  parsed_input = io.get()
 
-    # Add individuals and their respective fitness levels to the weighted
-    # population list. This will be used to pull out individuals via certain
-    # probabilities during the selection phase. Then, reset the population list
-    # so we can repopulate it after selection.
-    for individual in population:
-      fitness_val = fitness(individual)
+  # Training Set
+  training_set = get_training_set(parsed_input)
 
-      # Generate the (individual,fitness) pair, taking in account whether or
-      # not we will accidently divide by zero.
-      if fitness_val == 0:
-        pair = (individual, 1.0)
+  # Validation Set
+  validation_set = get_validation_set(parsed_input)
+
+  num_iterations = input("Indica el número de iteraciones para el entrenamiento")
+
+  for i in range(0, num_iterations):
+      # Paso 1: Generar Tablas Random
+      population = random_population()
+
+      # Evaluar las cadenas del input del set de entrenamiento.
+      # Output: arreglo de valores verdaderos y falsos según su aceptación
+      # o rechazo.
+      predicted_output_train = predict(population, training_set)
+
+      # Using training set expected values (Y's).
+      precision, recall = calculate_performance(training_set,
+        predicted_output_train)
+
+      if recall < 0.5:
+          shrink_population(population)
       else:
-        pair = (individual, 1.0/fitness_val)
+          augment_population(population)
 
-      weighted_population.append(pair)
+      # Choose the best from the population for the generation
+      generation = append_generation(population)
 
-    population = []
+      cross_over(population)
 
-    # Select two random individuals, based on their fitness probabilites, cross
-    # their genes over at a random point, mutate them, and add them back to the
-    # population for the next iteration.
-    for _ in range(POP_SIZE/2):
-      # Selection
-      ind1 = weighted_choice(weighted_population)
-      ind2 = weighted_choice(weighted_population)
-
-      # Crossover
-      ind1, ind2 = crossover(ind1, ind2)
-
-      # Mutate and add back into the population.
-      population.append(mutate(ind1))
-      population.append(mutate(ind2))
-
-  # Display the highest-ranked string after all generations have been iterated
-  # over. This will be the closest string to the OPTIMAL string, meaning it
-  # will have the smallest fitness value. Finally, exit the program.
-  fittest_string = population[0]
-  minimum_fitness = fitness(population[0])
-
-  for individual in population:
-    ind_fitness = fitness(individual)
-    if ind_fitness <= minimum_fitness:
-      fittest_string = individual
-      minimum_fitness = ind_fitness
-
-  print("Fittest String: %s" % fittest_string)
-  exit(0)
-  """
+      mutation(population)
