@@ -39,6 +39,7 @@ def random_state(numStates, numLetters):
   movement = random.randrange(0, 1)
   return { "nextState": nextState, "replaceLetter": replaceLetter, "movement": movement }
 
+# TODO(Uriel96)
 def random_population():
   """
   Return a list of POP_SIZE individuals, each randomly generated via iterating
@@ -57,30 +58,39 @@ def random_population():
     tables.append(table)
   return tables
 
+# TODO(LewisErick)
 def get_training_set(parsed_input):
     return None
 
+# TODO(LewisErick)
 def get_validation_set(parsed_input):
     return None
 
+# TODO(LewisErick)
 def predict(population, training_set):
     return None
 
+# TODO(LewisErick)
 def calculate_performance(training_set, predicted_output_train):
     return None
 
+# TODO(LewisErick)
 def shrink_population(population):
     return None
 
+# TODO(LewisErick)
 def augment_population(population):
     return None
 
+# TODO(Uriel96)
 def append_generation(population):
     return None
 
+# TODO(Uriel96)
 def cross_over(population):
     return None
 
+# TODO(LewisErick)
 def mutation(population):
     return None
 
@@ -126,6 +136,7 @@ def crossover(dna1, dna2):
 #
 
 if __name__ == "__main__":
+  # Paso 1: Generar Tablas Random
   # Generate initial population. This will create a list of POP_SIZE strings,
   # each initialized to a sequence of random characters.
   population = random_population()
@@ -144,9 +155,6 @@ if __name__ == "__main__":
   num_iterations = input("Indica el número de iteraciones para el entrenamiento")
 
   for i in range(0, num_iterations):
-      # Paso 1: Generar Tablas Random
-      population = random_population()
-
       # Evaluar las cadenas del input del set de entrenamiento.
       # Output: arreglo de valores verdaderos y falsos según su aceptación
       # o rechazo.
@@ -158,7 +166,7 @@ if __name__ == "__main__":
 
       if recall < 0.5:
           shrink_population(population)
-      else:
+      elif precision < 0.5:
           augment_population(population)
 
       # Choose the best from the population for the generation
