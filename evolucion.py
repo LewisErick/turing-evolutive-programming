@@ -59,12 +59,16 @@ def random_population():
   return tables
 
 # TODO(LewisErick)
+# Input: Numpy Matrix
+# Output: Numpy Matrix
 def get_training_set(parsed_input):
-    return None
+    return parsed_input[0:parsed_input.shape[0]/2, :]
 
 # TODO(LewisErick)
+# Input: Numpy Matrix
+# Output: Numpy Matrix
 def get_validation_set(parsed_input):
-    return None
+    return parsed_input[parsed_input.shape[0]/2, :]
 
 # TODO(LewisErick)
 def predict(population, training_set):
