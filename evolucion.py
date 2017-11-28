@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import random
 
+import pprint
+
 #
 # Global variables
 # Setup optimal string and GA input variables.
@@ -14,6 +16,8 @@ GENERATIONS = 5000
 
 MAX_COLUMN = 5
 MAX_ROW = 5
+MIN_COLUMN = 2
+MIN_ROW = 3
 
 #
 # Helper functions
@@ -46,20 +50,21 @@ def random_state(numStates, numLetters):
 
 # TODO(Uriel96)
 def random_population():
-  """
-  Return a list of POP_SIZE individuals, each randomly generated via iterating
-  DNA_SIZE times to generate a string of random characters with random_char().
-  """
-
   tables = []
   for i in range(POP_SIZE):
+    num_rows = random.randrange(MIN_ROW, MAX_ROW+1)
+    num_columns = random.randrange(MIN_COLUMN, MAX_COLUMN+1)
     table = []
-    for row in range(MAX_ROW):
+    for row in range(num_rows):
       table.append([])
-      for column in range(MAX_COLUMN):
-        table[row].append(random_state(MAX_ROW, MAX_COLUMN))
+      for column in range(num_columns):
+        table[row].append(random_state(num_rows, num_columns))
     tables.append(table)
   return tables
+
+def print_table(table):
+  pp = pprint.PrettyPrinter(indent=4)
+  pp.pprint(table)
 
 # TODO(LewisErick)
 # Input: Numpy Matrix
@@ -94,8 +99,29 @@ def append_generation(population):
     return None
 
 # TODO(Uriel96)
-def cross_over(population):
-    return None
+def create_next_generation(population):
+    new_population = []
+    for table in population:
+      table_A = pick_random_table(population)
+      table_B = pick_random_table(population)
+      print_table(table_A)
+      print_table(table_B)
+      new_table = cross_over(table_A, table_B)
+      new_population.append(new_table)
+    return new_population
+
+def cross_over(table_A, table_B):
+  return []
+
+def pick_random_table(population):
+  index = 0
+  r = random.randrange(0, 2)
+  while r > 0:
+    r = r - population[index].fitness
+    index += 1
+  index -= 1
+  return population[index]
+
 
 # TODO(LewisErick)
 def mutation(population):
@@ -149,11 +175,9 @@ if __name__ == "__main__":
   population = random_population()
 
   for i in range(POP_SIZE):
-    for row in range(MAX_ROW):
-      r = ""
-      for column in range(MAX_COLUMN):
-        r += str(population[i][row][column]) + " "
-      print(r)
+    print_table(population[i])
+
+  create_next_generation(population)
 
   '''
   generation = []
