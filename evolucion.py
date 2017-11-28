@@ -141,6 +141,12 @@ if __name__ == "__main__":
   # each initialized to a sequence of random characters.
   population = random_population()
 
+  for i in range(POP_SIZE):
+    for row in range(3):
+      for column in range(3):
+        print(population[i][row][column])
+
+
   generation = []
 
   # Parse Input
