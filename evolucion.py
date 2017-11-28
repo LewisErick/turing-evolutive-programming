@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import random
 
 #
@@ -9,6 +11,9 @@ OPTIMAL     = "Hello, World"
 DNA_SIZE    = len(OPTIMAL)
 POP_SIZE    = 20
 GENERATIONS = 5000
+
+MAX_COLUMN = 5
+MAX_ROW = 5
 
 #
 # Helper functions
@@ -34,10 +39,10 @@ def random_state(numStates, numLetters):
   Return a random character between ASCII 32 and 126 (i.e. spaces, symbols,
   letters, and digits). All characters returned will be nicely printable.
   """
-  nextState = random.randrange(0, numStates)
-  replaceLetter = random.randrange(0, numLetters)
+  next_state = random.randrange(0, numStates)
+  replace_letter = random.randrange(0, numLetters)
   movement = random.randrange(0, 2)
-  return { "nextState": nextState, "replaceLetter": replaceLetter, "movement": movement }
+  return { "next_state": next_state, "replace_letter": replace_letter, "movement": movement }
 
 # TODO(Uriel96)
 def random_population():
@@ -45,16 +50,14 @@ def random_population():
   Return a list of POP_SIZE individuals, each randomly generated via iterating
   DNA_SIZE times to generate a string of random characters with random_char().
   """
-  max_column = 3
-  max_row = 3
 
   tables = []
   for i in range(POP_SIZE):
     table = []
-    for row in range(max_row):
+    for row in range(MAX_ROW):
       table.append([])
-      for column in range(max_column):
-        table[row].append(random_state(max_row, max_column))
+      for column in range(MAX_COLUMN):
+        table[row].append(random_state(MAX_ROW, MAX_COLUMN))
     tables.append(table)
   return tables
 
@@ -146,11 +149,13 @@ if __name__ == "__main__":
   population = random_population()
 
   for i in range(POP_SIZE):
-    for row in range(3):
-      for column in range(3):
-        print(population[i][row][column])
+    for row in range(MAX_ROW):
+      r = ""
+      for column in range(MAX_COLUMN):
+        r += str(population[i][row][column]) + " "
+      print(r)
 
-
+  '''
   generation = []
 
   # Parse Input
@@ -162,7 +167,7 @@ if __name__ == "__main__":
   # Validation Set
   validation_set = get_validation_set(parsed_input)
 
-  num_iterations = input("Indica el número de iteraciones para el entrenamiento")
+  num_iterations = input("Indica el numero de iteraciones para el entrenamiento")
 
   for i in range(0, num_iterations):
       # Evaluar las cadenas del input del set de entrenamiento.
@@ -185,3 +190,4 @@ if __name__ == "__main__":
       cross_over(population)
 
       mutation(population)
+   '''
