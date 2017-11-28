@@ -12,8 +12,13 @@ DNA_SIZE    = len(OPTIMAL)
 POP_SIZE    = 20
 GENERATIONS = 5000
 
-MAX_COLUMN = 5
+# columns -> language elements
+MAX_COLUMN = 2
+
+# rows -> number of states (minimum 3: initial, acceptance, rejection)
 MAX_ROW = 5
+
+LANGUAGE = {"0": 0, "1": 1}
 
 #
 # Helper functions
@@ -73,9 +78,67 @@ def get_training_set(parsed_input):
 def get_validation_set(parsed_input):
     return parsed_input[parsed_input.shape[0]/2, :]
 
+# Maps the symbol to its index in the transition table.
+def matrix_column(symbol)
+    try:
+        LANGUAGE[symbol]
+    except KeyError:
+        return 0
+
 # TODO(LewisErick)
 def predict(population, training_set):
-    return None
+    training_set_x = training_set[:, 0:training_set.shape[1]-1]
+    training_set_y = training_set[:, training_set.shape[1]:]
+
+    predict_matrix = []
+
+    for example in training_set_y:
+        assert isinstance(example, basestring)
+        predict_row = []
+
+        # Process acceptance () or denial (false) for each example in each
+        # transition table in the current population.
+        for table in population:
+            # Initial state of Turing Machine
+            state = 0
+            # Timeout control
+            timeout = 0
+            # Head of Turing Machine
+            head = 0
+            while timeout < 1000 and state is not 1 and state is not 2 and head >= len(example):
+                if head < 0:
+                    current_character = ""
+                else:
+                    current_character = example[head]
+                column_index = matrix_column(current_character)
+
+                transition = table[state][column_index]
+                next_state = transition["next_state"]
+                replace_letter = transition["replace_letter"]
+                movement = transition["movement"]
+
+                state = next_state
+                example[head] = replace_letter
+
+                if movement == 0:
+                    head -= 1
+                else:
+                    head += 1
+
+                timeout += 1
+
+            if timout >= 1000
+                predict_row.append(False)
+            # 1 is the row of the accepted state
+            elif state is 1:
+                predict_row.append(True)
+            # 2 is the row of the rejected state.
+            elif state is 2:
+                predict_row.append(False)
+
+        predict_matrix.append(predict_row)
+
+    return predict_matrix
 
 # TODO(LewisErick)
 def calculate_performance(training_set, predicted_output_train):
@@ -137,23 +200,11 @@ def crossover(dna1, dna2):
   pos = int(random.random()*DNA_SIZE)
   return (dna1[:pos]+dna2[pos:], dna2[:pos]+dna1[pos:])
 
-#
-# Main driver
-# Generate a population and simulate GENERATIONS generations.
-#
-
 if __name__ == "__main__":
   # Paso 1: Generar Tablas Random
   # Generate initial population. This will create a list of POP_SIZE strings,
   # each initialized to a sequence of random characters.
   population = random_population()
-
-  for i in range(POP_SIZE):
-    for row in range(MAX_ROW):
-      r = ""
-      for column in range(MAX_COLUMN):
-        r += str(population[i][row][column]) + " "
-      print(r)
 
   '''
   generation = []
