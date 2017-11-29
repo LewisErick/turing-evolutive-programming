@@ -219,8 +219,7 @@ def augment_population(population):
     return population
 
 # TODO(Uriel96)
-# Input: Population, Accuracy List for each training example in the training set
-#   for the given population (if not specified a random value is given).
+# Input: Population, Accuracy List for each table in the population.
 def append_generation(population, accuracy=None):
   new_population = []
   for table in population:
@@ -250,8 +249,7 @@ def cross_over(table_A, table_B):
   return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # TODO(Uriel96)
-# Input: Population, Accuracy (0 to 1) List for each training example in the
-#   training set for the given population (if not specified a random value is given).
+# Input: Population, Accuracy List for each table in the population.
 def pick_random_table(population, accuracy):
   #TODO: Pick Random Table Based on Fitness
   '''
