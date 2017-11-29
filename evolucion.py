@@ -15,13 +15,18 @@ POP_SIZE    = 20
 GENERATIONS = 5000
 
 # columns -> language elements
-MAX_COLUMN = 5
+NUM_COLUMNS = 5
 
 # rows -> number of states (minimum 3: initial, acceptance, rejection)
-MAX_ROW = 5
+NUM_ROWS = 5
 
 MIN_COLUMN = 2
 MIN_ROW = 3
+
+MAX_COLUMN = 99
+MAX_ROW = 99
+
+MAX_AUGMENT_RATE = 3
 
 LANGUAGE = {"0": 0, "1": 1}
 
@@ -55,14 +60,14 @@ def random_state(numStates, numLetters):
   return { "next_state": next_state, "replace_letter": replace_letter, "movement": movement }
 
 # TODO(Uriel96)
-def random_population():
+def random_population(num_rows, num_columns):
   tables = []
   for i in range(POP_SIZE):
     table = []
-    for row in range(MAX_COLUMN):
+    for row in range(num_columns):
       table.append([])
-      for column in range(MAX_COLUMN):
-        table[row].append(random_state(MAX_ROW, MAX_COLUMN))
+      for column in range(num_columns):
+        table[row].append(random_state(num_rows, num_columns))
     tables.append(table)
   return tables
 
@@ -91,6 +96,11 @@ def matrix_column(symbol):
         return 0
 
 # TODO(LewisErick)
+# Input: Population, Training Set
+# Output: Matrix
+#    Each row represents a table in the population
+#       Each cell in the row represents the acceptance or rejection of the
+#       training when run through the transition table.
 def predict(population, training_set):
     training_set_x = training_set[:, 0:training_set.shape[1]-1]
     training_set_y = training_set[:, training_set.shape[1]:]
@@ -99,24 +109,25 @@ def predict(population, training_set):
 
     #Erick, lo agregue para que no me marcara error
     basestring = ""
-    for example in training_set_y:
-        assert isinstance(example, basestring)
-        predict_row = []
-
-        # Process acceptance () or denial (false) for each example in each
-        # transition table in the current population.
-        for table in population:
+    for table in population:
+        # Process acceptance () or denial (false) for each example in the
+        # transition.
+        for example in training_set_y:
+            assert isinstance(example, basestring)
             # Initial state of Turing Machine
             state = 0
             # Timeout control
             timeout = 0
             # Head of Turing Machine
             head = 0
+            # Example copy for modifications
+            mod_example = example
+
             while timeout < 1000 and state is not 1 and state is not 2 and head >= len(example):
                 if head < 0:
                     current_character = ""
                 else:
-                    current_character = example[head]
+                    current_character = mod_example[head]
                 column_index = matrix_column(current_character)
 
                 transition = table[state][column_index]
@@ -125,7 +136,7 @@ def predict(population, training_set):
                 movement = transition["movement"]
 
                 state = next_state
-                example[head] = replace_letter
+                mod_example[head] = replace_letter
 
                 if movement == 0:
                     head -= 1
@@ -134,6 +145,7 @@ def predict(population, training_set):
 
                 timeout += 1
 
+            # The run timed out. Invalid transition table for this example.
             if timout >= 1000:
                 predict_row.append(False)
             # 1 is the row of the accepted state
@@ -148,24 +160,73 @@ def predict(population, training_set):
     return predict_matrix
 
 # TODO(LewisErick)
+# Input: Training set, Predicted Output (matrix)
+# Output: Precision List, Recall List, Accuracy List
+#
+# Precision = true positives / (true positivies + false positives)
+# Recall = true positives / (true positives + false negatives)
+# Accuracy = how many were right / number of examples
 def calculate_performance(training_set, predicted_output_train):
-    return None
+    # Array with the precision values (0 to 1) for each of the training examples.
+    precision = []
+    # Array with the recall values (0 to 1) for each of the training examples.
+    recall = []
+    # Array with the accuracy values (0 to 1) for each of the training examples.
+    accuracy = []
+
+    training_set_y = list(training_set[:, training_set.shape[1]-1])
+    for table_output in predicted_output_train:
+        true_positives = 0
+        true_negatives = 0
+        false_positives = 0
+        false_negatives = 0
+        for prediction, real_value in zip(table_output, training_set_y):
+            if prediction == real_value
+                if prediction is True:
+                    true_positives += 1
+                else:
+                    true_negatives += 1
+            if prediction != real_value:
+                if prediction is True:
+                    false_positives += 1
+                else:
+                    false_negatives += 1
+        precision.append(true_positives/(true_positives+false_positives))
+        recall.append(true_positives/(true_positives+false_negatives))
+        accuracy.append((true_positives+true_negatives)/training_set.shape[0])
+
+    return [precision, recall, accuracy]
 
 # TODO(LewisErick)
 def shrink_population(population):
-    return None
+    if (population.shape[0] > MIN_ROW):
+        new_row_size = population.shape[0] - random.randrange(0, population.shape[0]-MIN_ROW)
+        population = population[0:new_row_size,:]
+    return population
 
 # TODO(LewisErick)
+# Adds more rows with randomly generated states to the Turing Machine transition
+# table.
+#
+# This translates to: adding more states to the machine.
 def augment_population(population):
-    return None
+    if (population.shape[0] < MAX_ROW):
+        append_size = random.randrange(1, MAX_AUGMENT_RATE)
+        population_to_append = random_population(append_size, NUM_COLUMNS)
+        for append_table, table in zip(population_to_append, population):
+            for row in append_table:
+                table.append(row)
+    return population
 
 # TODO(Uriel96)
-def append_generation(population):
+# Input: Population, Accuracy List for each training example in the training set
+#   for the given population (if not specified a random value is given).
+def append_generation(population, accuracy=None):
   new_population = []
   for table in population:
     #Pick Two Tables
-    table_A = pick_random_table(population)
-    table_B = pick_random_table(population)
+    table_A = pick_random_table(population, accuracy)
+    table_B = pick_random_table(population, accuracy)
     print("Table A")
     print_table(table_A)
     print("Table B")
@@ -185,11 +246,13 @@ def append_generation(population):
 
 # TODO(Uriel96)
 def cross_over(table_A, table_B):
-  pos = random.randrange(1, MAX_ROW-1)
+  pos = random.randrange(1, NUM_ROWS-1)
   return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # TODO(Uriel96)
-def pick_random_table(population):
+# Input: Population, Accuracy (0 to 1) List for each training example in the
+#   training set for the given population (if not specified a random value is given).
+def pick_random_table(population, accuracy):
   #TODO: Pick Random Table Based on Fitness
   '''
   index = 0
@@ -204,52 +267,37 @@ def pick_random_table(population):
 
 
 # TODO(LewisErick)
+# Changes randomly one of the following:
+# next_state, replace_letter, movement
+# for all cells in the matrix.
 def mutation(population):
-    return None
+    for i in range(0, population.shape[0]):
+        for j in range(0, population.shape[1]):
+            r = random.randrange(0, 3)
+            new_population_state = population[i][j]
+            if r > 0:
+                # Next-Step
+                if r == 1:
+                    new_population_state["next_step"] = random.randrange(0, NUM_ROWS)
+                # Replace Letter
+                elif r == 2:
+                    new_population_state["replace_letter"] = random.randrange(0, NUM_COLUMNS)
+                # Movement
+                elif r == 3:
+                    new_population_state["movement"] = random.randrange(0, 2)
+                population[i][j] = new_population_state
 
-#
-# GA functions
-# These make up the bulk of the actual GA algorithm.
-#
-
-def fitness(dna):
-  """
-  For each gene in the DNA, this function calculates the difference between
-  it and the character in the same position in the OPTIMAL string. These values
-  are summed and then returned.
-  """
-  fitness = 0
-  for c in range(DNA_SIZE):
-    fitness += abs(ord(dna[c]) - ord(OPTIMAL[c]))
-  return fitness
-"""
-def mutate(dna):
-  dna_out = ""
-  mutation_chance = 100
-  for c in range(DNA_SIZE):
-    if int(random.random()*mutation_chance) == 1:
-      dna_out += random_char()
-    else:
-      dna_out += dna[c]
-  return dna_out
-"""
+    return population
 
 if __name__ == "__main__":
+  # Parse Input
+  parsed_input = io.get()
+
   # Paso 1: Generar Tablas Random
   # Generate initial population. This will create a list of POP_SIZE strings,
   # each initialized to a sequence of random characters.
-  population = random_population()
-
-  #for i in range(POP_SIZE):
-  #  print_table(population[i])
-
+  population = random_population(NUM_ROWS, NUM_COLUMNS)
   population = append_generation(population)
-
-  '''
-  generation = []
-
-  # Parse Input
-  parsed_input = io.get()
 
   # Training Set
   training_set = get_training_set(parsed_input)
@@ -266,18 +314,20 @@ if __name__ == "__main__":
       predicted_output_train = predict(population, training_set)
 
       # Using training set expected values (Y's).
-      precision, recall = calculate_performance(training_set,
+      precision, recall, accuracy = calculate_performance(training_set,
         predicted_output_train)
 
-      if recall < 0.5:
+      average_precision = reduce(lambda x, y: x + y, precision) / len(precision)
+      average_recall = reduce(lambda x, y: x + y, recall) / len(recall)
+
+      # Small precision means we're having too many false positives: our
+      # population of transition tables is overfitting.
+      if average_precision < 0.5:
           shrink_population(population)
-      elif precision < 0.5:
+      # Small recall means we're having too many false negatives: our population
+      # of transition tables is underfitting.
+      elif recall < 0.5:
           augment_population(population)
 
       # Choose the best from the population for the generation
-      generation = append_generation(population)
-
-      cross_over(population)
-
-      mutation(population)
-   '''
+      generation = append_generation(population, accuracy)
