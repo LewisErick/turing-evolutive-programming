@@ -226,7 +226,7 @@ def append_generation(population, accuracy=None):
     new_table = cross_over(table_A, table_B)
 
     #Mutate Table
-    mutation(new_table)
+    new_table = mutation(new_table)
 
     #Add It to New Population
     new_population.append(new_table)
