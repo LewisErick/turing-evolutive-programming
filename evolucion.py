@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import random
+import io
+import numpy as np
 
 import pprint
 
@@ -76,17 +78,15 @@ def print_table(table):
   pp = pprint.PrettyPrinter(indent=4)
   pp.pprint(table)
 
-# TODO(LewisErick)
 # Input: Numpy Matrix
 # Output: Numpy Matrix
 def get_training_set(parsed_input):
     return parsed_input[0:parsed_input.shape[0]/2, :]
 
-# TODO(LewisErick)
 # Input: Numpy Matrix
 # Output: Numpy Matrix
 def get_validation_set(parsed_input):
-    return parsed_input[parsed_input.shape[0]/2, :]
+    return parsed_input[parsed_input.shape[0]/2:, :]
 
 # Maps the symbol to its index in the transition table.
 def matrix_column(symbol):
@@ -95,7 +95,6 @@ def matrix_column(symbol):
     except KeyError:
         return 0
 
-# TODO(LewisErick)
 # Input: Population, Training Set
 # Output: Matrix
 #    Each row represents a table in the population
@@ -159,7 +158,6 @@ def predict(population, training_set):
 
     return predict_matrix
 
-# TODO(LewisErick)
 # Input: Training set, Predicted Output (matrix)
 # Output: Precision List, Recall List, Accuracy List
 #
@@ -181,7 +179,7 @@ def calculate_performance(training_set, predicted_output_train):
         false_positives = 0
         false_negatives = 0
         for prediction, real_value in zip(table_output, training_set_y):
-            if prediction == real_value
+            if prediction == real_value:
                 if prediction is True:
                     true_positives += 1
                 else:
@@ -197,14 +195,12 @@ def calculate_performance(training_set, predicted_output_train):
 
     return [precision, recall, accuracy]
 
-# TODO(LewisErick)
 def shrink_population(population):
     if (population.shape[0] > MIN_ROW):
         new_row_size = population.shape[0] - random.randrange(0, population.shape[0]-MIN_ROW)
         population = population[0:new_row_size,:]
     return population
 
-# TODO(LewisErick)
 # Adds more rows with randomly generated states to the Turing Machine transition
 # table.
 #
@@ -218,7 +214,6 @@ def augment_population(population):
                 table.append(row)
     return population
 
-# TODO(Uriel96)
 # Input: Population, Accuracy List for each table in the population.
 def append_generation(population, accuracy=None):
   new_population = []
@@ -263,14 +258,12 @@ def pick_random_table(population, accuracy):
   '''
   return population[random.randrange(0, len(population))]
 
-
-# TODO(LewisErick)
 # Changes randomly one of the following:
 # next_state, replace_letter, movement
 # for all cells in the matrix.
 def mutation(population):
-    for i in range(0, population.shape[0]):
-        for j in range(0, population.shape[1]):
+    for i in range(0, len(population)):
+        for j in range(0, len(population[0])):
             r = random.randrange(0, 3)
             new_population_state = population[i][j]
             if r > 0:
@@ -295,7 +288,9 @@ if __name__ == "__main__":
   # Generate initial population. This will create a list of POP_SIZE strings,
   # each initialized to a sequence of random characters.
   population = random_population(NUM_ROWS, NUM_COLUMNS)
-  population = append_generation(population)
+
+  # x is your dataset
+  np.random.shuffle(parsed_input)
 
   # Training Set
   training_set = get_training_set(parsed_input)
@@ -304,6 +299,9 @@ if __name__ == "__main__":
   validation_set = get_validation_set(parsed_input)
 
   num_iterations = input("Indica el numero de iteraciones para el entrenamiento")
+
+  population = append_generation(population)
+  '''
 
   for i in range(0, num_iterations):
       # Evaluar las cadenas del input del set de entrenamiento.
@@ -329,3 +327,4 @@ if __name__ == "__main__":
 
       # Choose the best from the population for the generation
       generation = append_generation(population, accuracy)
+   '''
