@@ -221,15 +221,9 @@ def append_generation(population, accuracy=None):
     #Pick Two Tables
     table_A = pick_random_table(population, accuracy)
     table_B = pick_random_table(population, accuracy)
-    print("Table A")
-    print_table(table_A)
-    print("Table B")
-    print_table(table_B)
 
     #Cross Them
     new_table = cross_over(table_A, table_B)
-    print("Cross-Over Table")
-    print_table(new_table)
 
     #Mutate Table
     mutation(new_table)
