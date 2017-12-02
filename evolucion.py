@@ -276,24 +276,23 @@ def append_generation(population, accuracy=None, precision=None, recall=None):
         #print("Average recall: {}".format(average_recall))
 
         if average_precision < 0.5:
-            #print("Shrink")
-            #population = shrink_population(population)
             population = augment_population(population)
         elif average_recall < 0.5:
-            #print("Augment")
-            #population = shrink_population(population)
-            population = augment_population(population)
+            population = shrink_population(population)
 
     for table in population:
       #Pick Two Tables
-      table_A = pick_random_table(population, accuracy)
-      table_B = pick_random_table(population, accuracy)
+      table_A, accuracy_A = pick_random_table(population, accuracy)
+      table_B, accuracy_B = pick_random_table(population, accuracy)
 
       #Cross Them
       new_table = cross_over(table_A, table_B)
 
       #Mutate Table
-      new_table = mutation(new_table)
+      if accuracy_A is not None and accuracy_B is not None:
+          new_table = mutation(new_table, (accuracy_A+accuracy_B)/2.0)
+      else:
+          new_table = mutation(new_table)
       new_population.append(new_table)
     return new_population
 
@@ -311,22 +310,24 @@ def pick_random_table(population, accuracies):
       """
       weight_total = sum(accuracies)
       n = random.uniform(0, weight_total)
+      accuracy = None
       for table, accuracy in zip(population, accuracies):
         if n < accuracy:
-          return table
+          return table, accuracy
         n = n - accuracy
-      return table
-    else:
-      return population[random.randrange(0, len(population))]
+      rand_index = random.randrange(0, len(population))
+      return population[rand_index], accuracies[rand_index]
+    rand_index = random.randrange(0, len(population))
+    return population[rand_index], None
 
 # Changes randomly one of the following:
 # next_state, replace_letter, movement
 # for all cells in the matrix.
-def mutation(table):
+def mutation(table, accuracy=1):
     for i in range(0, len(table)):
         for j in range(0, len(table[0])):
             #TODO: variar la magnitud del -1000 en base al accuracy de la tabla.
-            r = random.randrange(-1000, 3)
+            r = random.randrange(int(-1000*(accuracy)), 3)
             new_table_state = table[i][j]
             if r > 0:
                 # Next-Step
