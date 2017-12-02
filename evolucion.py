@@ -396,9 +396,11 @@ if __name__ == "__main__":
 
         # Get the best table of all the population.
         best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
-        clear_terminal()
-        print("Best table: ")
-        print_table(best_table)
+        
+        if IN_DEBUG_MODE:
+            clear_terminal()
+            print("Best table: ")
+            print_table(best_table)
 
     # Evaluate the population of the final generation with all the string of the validation set.
     predicted_output_train = predict(population, validation_set)
@@ -407,7 +409,7 @@ if __name__ == "__main__":
     validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
         predicted_output_train)
 
-    # Get the best table of all the population.
+    # Get the best table of all the generations.
     best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
     
     print("Final Results")
