@@ -15,7 +15,7 @@ import pprint
 # Setup optimal string and GA input variables.
 #
 
-IN_DEBUG_MODE = True
+IN_DEBUG_MODE = False
 
 TIMEOUTS = 0
 
@@ -223,24 +223,30 @@ def calculate_performance(training_set, predicted_output_train):
     return [accuracy, precision, recall]
 
 def shrink_population(population):
+    global NUM_ROWS
     new_population = []
-    for table in population:
-        if (len(table) > MIN_ROW):
-            new_row_size = len(table) - random.randrange(0, len(table)-MIN_ROW)
-            table = np.matrix(table)
-            table = table[0:new_row_size,:]
-            table = table.tolist()
-        new_population.append(table)
-    return new_population
-
+    if NUM_ROWS > MIN_ROW:
+        NUM_ROWS -= 1
+        for table in population:
+            if (len(table) > MIN_ROW):
+                new_row_size = len(table) - random.randrange(0, len(table)-MIN_ROW)
+                table = np.matrix(table)
+                table = table[0:new_row_size,:]
+                table = table.tolist()
+            new_population.append(table)
+        return new_population
+    else:
+        return population
 # Adds more rows with randomly generated states to the Turing Machine transition
 # table.
 #
 # This translates to: adding more states to the machine.
 def augment_population(population):
-    if len(population) < MAX_ROW:
+    global NUM_ROWS
+    if len(population[1]) < MAX_ROW:
         append_size = random.randrange(1, MAX_AUGMENT_RATE)
-        population_to_append = random_population(append_size, NUM_COLUMNS)
+        NUM_ROWS += append_size
+        population_to_append = generate_random_population(append_size, NUM_COLUMNS)
         for append_table, table in zip(population_to_append, population):
             for row in append_table:
                 table.append(row)
@@ -257,16 +263,22 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
         for k in range(0, len(accuracy)):
             performances.append((accuracy[k], precision[k], recall[k]))
         performances.sort(reverse=True)
+        
         for j in range(0, int(len(performances)/2)):
-            average_precision = performances[j][1]
-            average_recall = performances[j][2]
+            average_precision += performances[j][1]
+            average_recall += performances[j][2]
         average_precision = average_precision / int(len(performances)/2)
         average_recall = average_recall / int(len(performances)/2)
-
+        
+        
         if average_precision < 0.5:
-            population = augment_population(population)
-        elif average_recall < 0.5:
             population = shrink_population(population)
+            if IN_DEBUG_MODE:
+                print("Shrink")
+        elif average_recall < 0.5:
+            population = augment_population(population)
+            if IN_DEBUG_MODE:
+                print("Augment")
 
     for table in population:
       #Pick Two Tables
@@ -288,8 +300,8 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
     return new_population
 
 def cross_over(table_A, table_B, accuracy=0):
-  pos = random.randrange(1+int((len(table_A)-2)*accuracy), len(table_A)-1)
-  return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
+    pos = random.randrange(1+int((len(table_A)-2)*accuracy), len(table_A)-1)
+    return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # Input: Population, Accuracy List for each table in the population.
 def pick_random_table(population, accuracies):
@@ -334,7 +346,7 @@ def mutation(table, accuracy=0):
 
     return table
 
-def get_best_table(population, accuracies, precisions, recalls):
+def get_best_performance(accuracies, precisions, recalls):
     average_precision = 0
     average_recall = 0
     performances = []
@@ -343,7 +355,7 @@ def get_best_table(population, accuracies, precisions, recalls):
         performances.append((accuracies[i], precisions[i], recalls[i], index))
         index += 1
     performances.sort(reverse=True)
-    return (population[performances[0][3]], performances[0][0], performances[0][1], performances[0][2])
+    return performances[0]
 
 def clear_terminal():
     if platform.system() == 'Windows':
@@ -352,6 +364,8 @@ def clear_terminal():
         os.system( 'clear' )
 
 if __name__ == "__main__":
+    iohelp.set_even(50)
+
     # Parse Input
     parsed_input = iohelp.get()
 
@@ -378,7 +392,7 @@ if __name__ == "__main__":
         # Evaluate the population with all the strings of the training set.
         # Output: array with accepted (as true) and rejected (as false) values.
         predicted_output_train = predict(population, training_set)
-
+        
         # Get the performance for all tables.
         accuracies, precisions, recalls = calculate_performance(training_set,
             predicted_output_train)
@@ -387,22 +401,32 @@ if __name__ == "__main__":
         population = create_next_generation(population, accuracies, precisions, recalls)
 
         # Get the best table of all the population.
-        best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
+        best_accuracy, best_precision, best_recall, index = get_best_performance(accuracies, precisions, recalls)
 
         if IN_DEBUG_MODE:
+            print("Best table: ")
+            print_table(population[index])
+        else:
             clear_terminal()
             print("Best table: ")
-            print_table(best_table)
+            print_table(population[index])
 
     # Get the best table of all the generations.
-    best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
+    best_accuracy, best_precision, best_recall, index = get_best_performance(accuracies, precisions, recalls)
 
+    if IN_DEBUG_MODE:
+        print("Best table: ")
+        print_table(population[index])
+    else:
+        clear_terminal()
+        print("Best table: ")
+        print_table(population[index])
+
+    print()
     print("Final Results for Training Set")
     print("Best Accuracy: {}".format(best_accuracy))
     print("Best Precision: {}".format(best_precision))
     print("Best Recall: {}".format(best_recall))
-    print("Best Table: ")
-    print_table(best_table)
 
     if IN_DEBUG_MODE:
         print("Total Timeouts {}".format(TIMEOUTS))
@@ -415,42 +439,16 @@ if __name__ == "__main__":
     validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
         predicted_output_validation)
 
-    average_precision = 0
-    average_recall = 0
-    performances = []
-    index = 0
-    for k in range(0, len(accuracy)):
-        performances.append((accuracy[k], precision[k], recall[k], index))
-        index += 1
-    performances.sort(reverse=True)
+    best_accuracy, best_precision, best_recall, index = get_best_performance(validation_accuracies, validation_precisions, validation_recalls)
 
-    print("Final Results for Validation Set")
-    print("Best Accuracy: {}".format(performances[0][0]))
-    print("Best Precision: {}".format(performances[0][1]))
-    print("Best Recall: {}".format(performances[0][2]))
-    print("Prediction Set Y: {}".format(predicted_output_validation[performances[0][3]]))
-    print("Validation Set Y: {}".format(validation_set[:,1:].tolist()))
-    print(validation_set.shape)
-
-    '''
-    # Evaluate the population of the final generation with all the string of the validation set.
-    predicted_output_validation = predict(population, validation_set)
-
-    # Get the performance for all tables of the final generation.
-    validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
-        predicted_output_validation)
-
-    # Get the best performance of the Validation Set.
-    best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
-
+    print()
     print("Final Results for Validation Set")
     print("Best Accuracy: {}".format(best_accuracy))
     print("Best Precision: {}".format(best_precision))
     print("Best Recall: {}".format(best_recall))
-    print("Prediction Set Y: {}".format(predicted_output_validation[performances[0][3]]))
-    print("Validation Set Y: {}".format(validation_set[:,1:].tolist()))
-    print(validation_set.shape)
-    '''
+    print("Prediction Set Y: {}".format(predicted_output_validation[index]))
+    #print("Validation Set Y: {}".format(validation_set[:,1:].tolist()))
+    #print(validation_set.shape)
 
 # TODO: Agregar columnas
 # TODO: Quitar columnas
