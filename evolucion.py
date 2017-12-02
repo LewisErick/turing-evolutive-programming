@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 import random
 import numpy as np
-import pprint
 
-from iohelp import read_input
+import iohelp
+
+import pprint
 
 #
 # Global variables
@@ -84,15 +85,12 @@ def print_table(table):
 # Input: Numpy Matrix
 # Output: Numpy Matrix
 def get_training_set(parsed_input):
-    middle = int(parsed_input.shape[0]/2)
-    print(middle)
-    return parsed_input[0:middle, :]
+    return parsed_input[0:int(parsed_input.shape[0]/2), :]
 
 # Input: Numpy Matrix
 # Output: Numpy Matrix
 def get_validation_set(parsed_input):
-    middle = int(parsed_input.shape[0]/2)
-    return parsed_input[middle:, :]
+    return parsed_input[int(parsed_input.shape[0]/2):, :]
 
 # Maps the symbol to its index in the transition table.
 def matrix_column(symbol):
@@ -345,7 +343,7 @@ def mutation(table):
 
 if __name__ == "__main__":
     # Parse Input
-    parsed_input = read_input()
+    parsed_input = iohelp.get()
 
     # Paso 1: Generar Tablas Random
     # Generate initial population. This will create a list of POP_SIZE strings,
@@ -384,16 +382,12 @@ if __name__ == "__main__":
 
         population = append_generation(population, accuracy, precision, recall)
 
-    # Evaluar las cadenas del input del set de entrenamiento.
-    # Output: arreglo de valores verdaderos y falsos según su aceptación
-    # o rechazo.
-    predicted_output_train = predict(population, validation_set)
+    predicted_output_train = predict(population, training_set)
 
-    # Using training set expected values (Y's).
-    precision, recall, accuracy = calculate_performance(validation_set,
+    precision, recall, accuracy = calculate_performance(training_set,
         predicted_output_train)
 
-    print("Final Results")
+    print("Final Results for Training Set")
 
     average_precision = 0
     average_recall = 0
@@ -410,7 +404,27 @@ if __name__ == "__main__":
     print("Best Table: ")
     print_table(population[performances[0][3]])
 
-    print("Timeouts Total {}".format(TIMEOUTS))
+    predicted_output_validation = predict(population, validation_set)
+
+    precision, recall, accuracy = calculate_performance(validation_set,
+        predicted_output_validation)
+
+    print("Final Results for Validation Set")
+
+    average_precision = 0
+    average_recall = 0
+    performances = []
+    index = 0
+    for k in range(0, len(accuracy)):
+        performances.append((accuracy[k], precision[k], recall[k], index))
+        index += 1
+    performances.sort(reverse=True)
+
+    print("Best Accuracy: {}".format(performances[0][0]))
+    print("Best Precision: {}".format(performances[0][1]))
+    print("Best Recall: {}".format(performances[0][2]))
+    print("Best Table: ")
+    print_table(population[performances[0][3]])
 
 
 # Agregar columnas
