@@ -13,7 +13,7 @@ import pprint
 # Setup optimal string and GA input variables.
 #
 
-IN_DEBUG_MODE = True
+IN_DEBUG_MODE = False
 
 TIMEOUTS = 0
 
@@ -46,20 +46,6 @@ def index_to_letter(index):
 # Helper functions
 # These are used as support, but aren't direct GA-specific functions.
 #
-
-def weighted_choice(items):
-  """
-  Chooses a random element from items, where items is a list of tuples in
-  the form (item, weight). weight determines the probability of choosing its
-  respective item. Note: this function is borrowed from ActiveState Recipes.
-  """
-  weight_total = sum((item[1] for item in items))
-  n = random.uniform(0, weight_total)
-  for item, weight in items:
-    if n < weight:
-      return item
-    n = n - weight
-  return item
 
 def random_state(numStates, numLetters):
   """
@@ -275,9 +261,6 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
         average_precision = average_precision / int(len(performances)/2)
         average_recall = average_recall / int(len(performances)/2)
 
-        #print("Average precison: {}".format(average_precision))
-        #print("Average recall: {}".format(average_recall))
-
         if average_precision < 0.5:
             population = augment_population(population)
         elif average_recall < 0.5:
@@ -326,11 +309,11 @@ def pick_random_table(population, accuracies):
 # Changes randomly one of the following:
 # next_state, replace_letter, movement
 # for all cells in the matrix.
-def mutation(table, accuracy=1):
+def mutation(table, accuracy=0):
     for i in range(0, len(table)):
         for j in range(0, len(table[0])):
             #TODO: variar la magnitud del -1000 en base al accuracy de la tabla.
-            r = random.randrange(int(-1000*(accuracy)), 3)
+            r = random.randrange(int(-1000*accuracy), 3)
             new_table_state = table[i][j]
             if r > 0:
                 # Next-Step
@@ -385,7 +368,7 @@ if __name__ == "__main__":
 
     for i in range(0, num_generations):
         # Evaluate the population with all the strings of the training set.
-        # Output: array with accepted (as true) and rejected (as false) values.  
+        # Output: array with accepted (as true) and rejected (as false) values.
         predicted_output_train = predict(population, training_set)
 
         # Get the performance for all tables.
@@ -397,20 +380,21 @@ if __name__ == "__main__":
 
         # Get the best table of all the population.
         best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
-        clear_terminal()
-        print("Best table: ")
-        print_table(best_table)
+        if IN_DEBUG_MODE:
+            clear_terminal()
+            print("Best table: ")
+            print_table(best_table)
 
     # Evaluate the population of the final generation with all the string of the validation set.
-    predicted_output_train = predict(population, validation_set)
+    predicted_output_validation = predict(population, validation_set)
 
     # Get the performance for all tables of the final generation.
     validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
-        predicted_output_train)
+        predicted_output_validation)
 
     # Get the best table of all the population.
     best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
-    
+
     print("Final Results")
     print("Best Accuracy: {}".format(best_accuracy))
     print("Best Precision: {}".format(best_precision))
