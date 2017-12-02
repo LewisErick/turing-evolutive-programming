@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import random
-import io
 import numpy as np
-
 import pprint
+
+from iohelp import read_input
 
 #
 # Global variables
@@ -84,12 +84,15 @@ def print_table(table):
 # Input: Numpy Matrix
 # Output: Numpy Matrix
 def get_training_set(parsed_input):
-    return parsed_input[0:parsed_input.shape[0]/2, :]
+    middle = int(parsed_input.shape[0]/2)
+    print(middle)
+    return parsed_input[0:middle, :]
 
 # Input: Numpy Matrix
 # Output: Numpy Matrix
 def get_validation_set(parsed_input):
-    return parsed_input[parsed_input.shape[0]/2:, :]
+    middle = int(parsed_input.shape[0]/2)
+    return parsed_input[middle:, :]
 
 # Maps the symbol to its index in the transition table.
 def matrix_column(symbol):
@@ -264,7 +267,7 @@ def append_generation(population, accuracy=None, precision=None, recall=None):
         for k in range(0, len(accuracy)):
             performances.append((accuracy[k], precision[k], recall[k]))
         performances.sort(reverse=True)
-        for j in range(0, len(performances)/2):
+        for j in range(0, int(len(performances)/2)):
             average_precision = performances[j][1]
             average_recall = performances[j][2]
         average_precision = average_precision / (len(performances)/2)
@@ -342,7 +345,7 @@ def mutation(table):
 
 if __name__ == "__main__":
     # Parse Input
-    parsed_input = io.get()
+    parsed_input = read_input()
 
     # Paso 1: Generar Tablas Random
     # Generate initial population. This will create a list of POP_SIZE strings,
@@ -358,7 +361,7 @@ if __name__ == "__main__":
     # Validation Set
     validation_set = get_validation_set(parsed_input)
 
-    num_iterations = input("Indica el numero de iteraciones para el entrenamiento")
+    num_iterations = int(input("Indica el numero de iteraciones para el entrenamiento"))
 
     predicted_output_train = None
     precision = None
