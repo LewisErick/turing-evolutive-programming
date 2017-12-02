@@ -34,6 +34,7 @@ LANGUAGE = {"0": 0, "1": 1, " ": 2, "X": 3, "Y": 4}
 LANGUAGE_INDEX = ["0", "1", " ", "X", "Y"]
 
 INFINITE_TAPE_SIZE = 50
+TIMEOUT_LIMIT = 1000
 
 def index_to_letter(index):
     return LANGUAGE_INDEX[index]
@@ -127,10 +128,10 @@ def predict(population, training_set):
             # Example copy for modifications
             mod_example = list(str(example.item(0)))
 
-            for i in range(0, INFINITE_TAPE_SIZE*2):
+            for i in range(0, TIMEOUT_LIMIT*2):
                 mod_example.append(" ")
 
-            while timeout < 10000 and state is not 1 and state is not 2 and head > INFINITE_TAPE_SIZE*-1 and head < len(mod_example) - INFINITE_TAPE_SIZE:
+            while timeout < TIMEOUT_LIMIT and state is not 1 and state is not 2 and head > TIMEOUT_LIMIT*-1 and head < len(mod_example) - TIMEOUT_LIMIT:
                 if head < 0:
                     current_character = ""
                 else:
@@ -161,14 +162,14 @@ def predict(population, training_set):
                 timeout += 1
 
             # The run timed out. Invalid transition table for this example.
-            if timeout >= 1000:
+            if timeout >= TIMEOUT_LIMIT:
                 TIMEOUTS += 1
                 predict_row.append(False)
             # 1 is the row of the accepted state
             elif state is 1:
                 predict_row.append(True)
             # 2 is the row of the rejected state.
-            elif state is 2:
+            else:
                 predict_row.append(False)
 
         predict_matrix.append(predict_row)
@@ -226,7 +227,7 @@ def calculate_performance(training_set, predicted_output_train):
             recall.append(0)
         else:
             recall.append(float(true_positives)/float(true_positives+false_negatives))
-        accuracy.append(float(true_positives+true_negatives)/training_set.shape[0])
+        accuracy.append(float(true_positives+true_negatives)/float(training_set.shape[0]))
 
     return [precision, recall, accuracy]
 
@@ -401,8 +402,9 @@ if __name__ == "__main__":
     print("Best Accuracy: {}".format(performances[0][0]))
     print("Best Precision: {}".format(performances[0][1]))
     print("Best Recall: {}".format(performances[0][2]))
-    print("Best Table: ")
-    print_table(population[performances[0][3]])
+    print("Prediction Set Y: {}".format(predicted_output_train[performances[0][3]]))
+    print("Training Set Y: {}".format(training_set[:,1:].tolist()))
+    print(training_set.shape)
 
     predicted_output_validation = predict(population, validation_set)
 
@@ -423,9 +425,9 @@ if __name__ == "__main__":
     print("Best Accuracy: {}".format(performances[0][0]))
     print("Best Precision: {}".format(performances[0][1]))
     print("Best Recall: {}".format(performances[0][2]))
-    print("Best Table: ")
-    print_table(population[performances[0][3]])
-
+    print("Prediction Set Y: {}".format(predicted_output_validation[performances[0][3]]))
+    print("Validation Set Y: {}".format(validation_set[:,1:].tolist()))
+    print(validation_set.shape)
 
 # Agregar columnas
 # Quitar columnas
