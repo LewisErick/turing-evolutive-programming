@@ -222,14 +222,14 @@ def calculate_performance(training_set, predicted_output_train):
 
     return [accuracy, precision, recall]
 
-def shrink_population(population):
+def shrink_population(population, accuracy):
     global NUM_ROWS
     new_population = []
     if NUM_ROWS > MIN_ROW:
         NUM_ROWS -= 1
         for table in population:
             if (len(table) > MIN_ROW):
-                new_row_size = len(table) - random.randrange(0, len(table)-MIN_ROW)
+                new_row_size = len(table) - random.randrange(0, int((len(table)-MIN_ROW)*(1-accuracy))+1)
                 table = np.matrix(table)
                 table = table[0:new_row_size,:]
                 table = table.tolist()
@@ -241,10 +241,10 @@ def shrink_population(population):
 # table.
 #
 # This translates to: adding more states to the machine.
-def augment_population(population):
+def augment_population(population, accuracy):
     global NUM_ROWS
     if len(population[1]) < MAX_ROW:
-        append_size = random.randrange(1, MAX_AUGMENT_RATE)
+        append_size = random.randrange(1, int(MAX_AUGMENT_RATE*(1-accuracy))+1)
         NUM_ROWS += append_size
         population_to_append = generate_random_population(append_size, NUM_COLUMNS)
         for append_table, table in zip(population_to_append, population):
@@ -253,30 +253,71 @@ def augment_population(population):
     return population
 
 # Input: Population, Accuracy List for each table in the population.
-def create_next_generation(population, accuracy=None, precision=None, recall=None):
+def create_next_generation(population, accuracy=None, precision=None, recall=None, training_set=None):
     new_population = []
 
-    if accuracy is not None:
+    if accuracy is not None and training_set is not None:
         average_precision = 0
         average_recall = 0
+        average_accuracy = 0
         performances = []
         for k in range(0, len(accuracy)):
             performances.append((accuracy[k], precision[k], recall[k]))
         performances.sort(reverse=True)
-        
+
         for j in range(0, int(len(performances)/2)):
             average_precision += performances[j][1]
             average_recall += performances[j][2]
+            average_accuracy += performances[j][0]
         average_precision = average_precision / int(len(performances)/2)
         average_recall = average_recall / int(len(performances)/2)
-        
-        
+        average_accuracy = average_precision / int(len(performances)/2)
+
+
         if average_precision < 0.5:
-            population = shrink_population(population)
+            # Shrink population and verify that it's performance (accuracy)
+            # is better after the transformation. If this doesn't happen
+            # after a tiemout, the population is not shrinked.
+
+            shrinked_population = shrink_population(population, average_accuracy)
+            predicted_output_shrink = predict(shrinked_population, training_set)
+            shrink_accuracies, shrink_precisions, shrink_recall =
+                calculate_performance(training_set, predicted_output_shrink)
+
+            shrink_timeout = 0
+            while shrink_accuracies.sort(reverse=True)[0] < average_accuracy and shrink_timeout < 100:
+                shrinked_population = shrink_population(population, average_accuracy)
+                predicted_output_shrink = predict(shrinked_population, training_set)
+                shrink_accuracies, shrink_precisions, shrink_recall =
+                    calculate_performance(training_set, predicted_output_shrink)
+                shrink_timeout += 1
+
+            if shrink_accuracies.sort(reverse=True)[0] > average_accuracy:
+                population = shrinked_population
+
             if IN_DEBUG_MODE:
                 print("Shrink")
         elif average_recall < 0.5:
-            population = augment_population(population)
+            # Shrink population and verify that it's performance (accuracy)
+            # is better after the transformation. If this doesn't happen
+            # after a tiemout, the population is not shrinked.
+
+            augmented_population = augment_population(population, average_accuracy)
+            predicted_output_augment = predict(augmented_population, training_set)
+            augment_accuracies, augment_precisions, augment_recall =
+                calculate_performance(training_set, predicted_output_augment)
+
+            augment_timeout = 0
+            while augment_accuracies.sort(reverse=True)[0] < best_accuracy and augment_timeout < 100:
+                augmented_population = augment_population(population, average_accuracy)
+                predicted_output_augment = predict(augmented_population, training_set)
+                augment_accuracies, augment_precisions, augment_recall =
+                    calculate_performance(training_set, predicted_output_augment)
+                augment_timeout += 1
+
+            if augment_accuracies.sort(reverse=True)[0] > best_accuracy:
+                population = shrinked_population
+
             if IN_DEBUG_MODE:
                 print("Augment")
 
@@ -392,13 +433,14 @@ if __name__ == "__main__":
         # Evaluate the population with all the strings of the training set.
         # Output: array with accepted (as true) and rejected (as false) values.
         predicted_output_train = predict(population, training_set)
-        
+
         # Get the performance for all tables.
         accuracies, precisions, recalls = calculate_performance(training_set,
             predicted_output_train)
 
         # Create the next generation based on the performance of the current generation.
-        population = create_next_generation(population, accuracies, precisions, recalls)
+        population = create_next_generation(population, accuracies, precisions, recalls,
+            training_set)
 
         # Get the best table of all the population.
         best_accuracy, best_precision, best_recall, index = get_best_performance(accuracies, precisions, recalls)
