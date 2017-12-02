@@ -270,8 +270,8 @@ def append_generation(population, accuracy=None, precision=None, recall=None):
         for j in range(0, int(len(performances)/2)):
             average_precision = performances[j][1]
             average_recall = performances[j][2]
-        average_precision = average_precision / (len(performances)/2)
-        average_recall = average_recall / (len(performances)/2)
+        average_precision = average_precision / int(len(performances)/2)
+        average_recall = average_recall / int(len(performances)/2)
 
         #print("Average precison: {}".format(average_precision))
         #print("Average recall: {}".format(average_recall))
