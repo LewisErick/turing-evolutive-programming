@@ -293,9 +293,8 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
 
             shrink_timeout = 0
             predicted_output_shrink = None
-            print(len(shrink_accuracies))
             while max(shrink_accuracies) < average_accuracy and shrink_timeout < TIMEOUT_LIMIT:
-                print(len(shrink_accuracies))
+                print(len(shrinked_population[0]))
                 shrinked_population = shrink_population(population, average_accuracy)
                 predicted_output_shrink = predict(shrinked_population, training_set)
                 shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
@@ -356,7 +355,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
     return new_population, True
 
 def cross_over(table_A, table_B, accuracy=0):
-    pos = random.randrange(1+int((len(table_A)-2)*accuracy), len(table_A)-1)
+    pos = int(random.randrange(1, len(table_A)-1)*(1-accuracy))
     return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # Input: Population, Accuracy List for each table in the population.
@@ -386,7 +385,7 @@ def mutation(table, accuracy=0):
     for i in range(0, len(table)):
         for j in range(0, len(table[0])):
             #TODO: variar la magnitud del -1000 en base al accuracy de la tabla.
-            r = random.randrange(int(-100*accuracy), 3)
+            r = random.randrange(int(-1000*accuracy), 3)
             new_table_state = table[i][j]
             if r > 0:
                 # Next-Step
@@ -472,6 +471,8 @@ if __name__ == "__main__":
         print("Generation #{}".format(i+1))
         print("Elitism tolerance: {}".format(ELITISM_TOLERANCE))
         print("Best accuracy: {}".format(best_accuracy))
+        print("Best accuracy: {}".format(best_precision))
+        print("Best accuracy: {}".format(best_recall))
         print("Table dimensions: {}x{}".format(len(population[index]), len(population[index][0])))
         #print("Best table: ")
         #print_table(population[index])
