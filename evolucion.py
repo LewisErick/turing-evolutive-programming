@@ -308,7 +308,6 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                 dimensions_tried.append(len(shrinked_population[0]))
                 if len(shrinked_population[0]) == len(population[0]):
                     next
-                print("neue")
                 predicted_output_shrink = predict(shrinked_population, training_set)
                 shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                     predicted_output_shrink)
