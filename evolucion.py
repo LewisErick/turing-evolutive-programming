@@ -3,6 +3,8 @@
 import random
 import numpy as np
 
+import platform
+
 import iohelp
 import os
 
@@ -272,7 +274,10 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
       table_B, accuracy_B = pick_random_table(population, accuracy)
 
       #Cross Them
-      new_table = cross_over(table_A, table_B)
+      if accuracy_A is not None and accuracy_B is not None:
+          new_table = cross_over(table_A, table_B, (accuracy_A+accuracy_B)/2.0)
+      else:
+          new_table = cross_over(table_A, table_B)
 
       #Mutate Table
       if accuracy_A is not None and accuracy_B is not None:
@@ -282,8 +287,8 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
       new_population.append(new_table)
     return new_population
 
-def cross_over(table_A, table_B):
-  pos = random.randrange(1, NUM_ROWS-1)
+def cross_over(table_A, table_B, accuracy=0):
+  pos = random.randrange(1+int((len(table_A)-2)*accuracy), len(table_A)-1)
   return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # Input: Population, Accuracy List for each table in the population.
@@ -341,7 +346,10 @@ def get_best_table(population, accuracies, precisions, recalls):
     return (population[performances[0][3]], performances[0][0], performances[0][1], performances[0][2])
 
 def clear_terminal():
-    os.system( 'cls' )
+    if platform.system() == 'Windows':
+        os.system( 'cls' )
+    else:
+        os.system( 'clear' )
 
 if __name__ == "__main__":
     # Parse Input
