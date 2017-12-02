@@ -33,7 +33,7 @@ MIN_ROW = 3
 MAX_COLUMN = 99
 MAX_ROW = 99
 
-MAX_AUGMENT_RATE = 3
+MAX_AUGMENT_RATE = 10
 
 LANGUAGE = {"0": 0, "1": 1, " ": 2, "X": 3, "Y": 4}
 LANGUAGE_INDEX = ["0", "1", " ", "X", "Y"]
@@ -42,7 +42,6 @@ INFINITE_TAPE_SIZE = 50
 TIMEOUT_LIMIT = 1000
 
 ELITISM_TOLERANCE = 0
-BEST_ACCURACY = 0
 
 def index_to_letter(index):
     return LANGUAGE_INDEX[index]
@@ -229,7 +228,8 @@ def shrink_population(population, accuracy):
     global NUM_ROWS
     new_population = []
     if len(population[0]) > MIN_ROW:
-        new_row_size = len(population[0]) - random.randrange(0, int((len(population[0])-MIN_ROW)*(1-accuracy))+1)
+        max_augment = int(MAX_AUGMENT_RATE*(1-accuracy))+1
+        new_row_size = len(population[0]) - max_augment
         if new_row_size < MIN_ROW:
             new_row_size = MIN_ROW
         for table in population:
@@ -247,7 +247,10 @@ def shrink_population(population, accuracy):
 def augment_population(population, accuracy):
     global NUM_ROWS
     if len(population[0]) < MAX_ROW:
-        append_size = random.randrange(1, int(MAX_AUGMENT_RATE*(1-accuracy))+1)
+        max_augment = int(MAX_AUGMENT_RATE*(1-accuracy))+1
+        if max_augment == 1:
+            return population
+        append_size = random.randrange(1, max_augment)
         NUM_ROWS += append_size
         if NUM_ROWS > MAX_ROW:
             NUM_ROWS = MAX_ROW
@@ -259,8 +262,6 @@ def augment_population(population, accuracy):
 
 # Input: Population, Accuracy List for each table in the population.
 def create_next_generation(population, accuracy=None, precision=None, recall=None, training_set=None):
-    global BEST_ACCURACY
-    global ELITISM_TOLERANCE
     new_population = []
 
     if accuracy is not None and training_set is not None:
@@ -278,7 +279,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             average_accuracy += performances[j][0]
         average_precision = average_precision / int(len(performances)/2)
         average_recall = average_recall / int(len(performances)/2)
-        average_accuracy = average_precision / int(len(performances)/2)
+        average_accuracy = max(accuracy)
 
         if average_precision < 0.5:
             # Shrink population and verify that it's performance (accuracy)
@@ -292,14 +293,16 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
 
             shrink_timeout = 0
             predicted_output_shrink = None
-            while np.mean(shrink_accuracies[0:int(len(shrink_accuracies)/2)]) < average_accuracy and shrink_timeout < 100:
+            print(len(shrink_accuracies))
+            while max(shrink_accuracies) < average_accuracy and shrink_timeout < TIMEOUT_LIMIT:
+                print(len(shrink_accuracies))
                 shrinked_population = shrink_population(population, average_accuracy)
                 predicted_output_shrink = predict(shrinked_population, training_set)
                 shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                     predicted_output_shrink)
                 shrink_timeout += 1
 
-            if np.mean(shrink_accuracies[0:int(len(shrink_accuracies)/2)]) > average_accuracy:
+            if max(shrink_accuracies) > average_accuracy:
                 population = shrinked_population
                 accuracy = shrink_accuracies
                 precision = shrink_precisions
@@ -318,13 +321,13 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                 predicted_output_augment)
 
             augment_timeout = 0
-            while np.mean(augment_accuracies[0:int(len(augment_accuracies)/2)]) < average_accuracy and augment_timeout < 100:
+            while max(augment_accuracies) < average_accuracy and augment_timeout < TIMEOUT_LIMIT:
                 augmented_population = augment_population(population, average_accuracy)
                 predicted_output_augment = predict(augmented_population, training_set)
                 augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
                     predicted_output_augment)
 
-            if np.mean(augment_accuracies[0:int(len(augment_accuracies)/2)]) > average_accuracy:
+            if max(augment_accuracies) > average_accuracy:
                 population = augmented_population
                 accuracy = augment_accuracies
                 precision = augment_precisions
@@ -332,15 +335,6 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
 
             if IN_DEBUG_MODE:
                 print("Augment")
-
-    if accuracy is not None:
-        if np.mean(accuracy[0:int(len(accuracy)/2)]) > BEST_ACCURACY:
-            BEST_ACCURACY = np.mean(accuracy[0:int(len(accuracy)/2)])
-
-    if BEST_ACCURACY > 0.75:
-        ELITISM_TOLERANCE += 1
-    if ELITISM_TOLERANCE > 5:
-        return population, False
 
     for table in population:
       #Pick Two Tables
@@ -392,7 +386,7 @@ def mutation(table, accuracy=0):
     for i in range(0, len(table)):
         for j in range(0, len(table[0])):
             #TODO: variar la magnitud del -1000 en base al accuracy de la tabla.
-            r = random.randrange(int(-1000*accuracy), 3)
+            r = random.randrange(int(-100*accuracy), 3)
             new_table_state = table[i][j]
             if r > 0:
                 # Next-Step
@@ -427,8 +421,7 @@ def clear_terminal():
 
 if __name__ == "__main__":
     global ELITISM_TOLERANCE
-    global BEST_ACCURACY
-    iohelp.set_even(100)
+    iohelp.set_even(50)
 
     # Parse Input
     parsed_input = iohelp.get()
@@ -468,11 +461,21 @@ if __name__ == "__main__":
         # Get the best table of all the population.
         best_accuracy, best_precision, best_recall, index = get_best_performance(accuracies, precisions, recalls)
 
+        if best_accuracy >= 0.7:
+            ELITISM_TOLERANCE += 1
+        else:
+            ELITISM_TOLERANCE = 0
+        if ELITISM_TOLERANCE == int(num_generations/10):
+            break
+
         clear_terminal()
+        print("Generation #{}".format(i+1))
         print("Elitism tolerance: {}".format(ELITISM_TOLERANCE))
-        print("Best accuracy: {}".format(BEST_ACCURACY))
+        print("Best accuracy: {}".format(best_accuracy))
+        print("Table dimensions: {}x{}".format(len(population[index]), len(population[index][0])))
         #print("Best table: ")
         #print_table(population[index])
+
         '''
         if IN_DEBUG_MODE:
             clear_terminal()
