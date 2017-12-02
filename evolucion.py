@@ -4,12 +4,16 @@ import random
 import io
 import numpy as np
 
+import os
+
 import pprint
 
 #
 # Global variables
 # Setup optimal string and GA input variables.
 #
+
+IN_DEBUG_MODE = True
 
 TIMEOUTS = 0
 
@@ -66,7 +70,7 @@ def random_state(numStates, numLetters):
   movement = random.randrange(0, 2)
   return { "next_state": next_state, "replace_letter": replace_letter, "movement": movement }
 
-def random_population(num_rows, num_columns):
+def generate_random_population(num_rows, num_columns):
   tables = []
   for i in range(POP_SIZE):
     table = []
@@ -227,7 +231,7 @@ def calculate_performance(training_set, predicted_output_train):
             recall.append(float(true_positives)/float(true_positives+false_negatives))
         accuracy.append(float(true_positives+true_negatives)/training_set.shape[0])
 
-    return [precision, recall, accuracy]
+    return [accuracy, precision, recall]
 
 def shrink_population(population):
     new_population = []
@@ -254,7 +258,7 @@ def augment_population(population):
     return population
 
 # Input: Population, Accuracy List for each table in the population.
-def append_generation(population, accuracy=None, precision=None, recall=None):
+def create_next_generation(population, accuracy=None, precision=None, recall=None):
     new_population = []
 
     if accuracy is not None:
@@ -340,14 +344,23 @@ def mutation(table):
 
     return table
 
+def get_best_table(population, accuracies, precisions, recalls):
+    average_precision = 0
+    average_recall = 0
+    performances = []
+    index = 0
+    for i in range(0, len(accuracies)):
+        performances.append((accuracies[i], precisions[i], recalls[i], index))
+        index += 1
+    performances.sort(reverse=True)
+    return (population[performances[0][3]], performances[0][0], performances[0][1], performances[0][2])
+
+def clear_terminal():
+    os.system( 'cls' )
+
 if __name__ == "__main__":
     # Parse Input
     parsed_input = io.get()
-
-    # Paso 1: Generar Tablas Random
-    # Generate initial population. This will create a list of POP_SIZE strings,
-    # each initialized to a sequence of random characters.
-    population = random_population(NUM_ROWS, NUM_COLUMNS)
 
     # x is your dataset
     np.random.shuffle(parsed_input)
@@ -358,59 +371,56 @@ if __name__ == "__main__":
     # Validation Set
     validation_set = get_validation_set(parsed_input)
 
-    num_iterations = input("Indica el numero de iteraciones para el entrenamiento")
+    num_generations = input("Indica el numero de iteraciones para el entrenamiento: ")
 
     predicted_output_train = None
     precision = None
     recall = None
     accuracy = None
 
-    population = append_generation(population)
+    # Generates a population of random tables.
+    population = generate_random_population(NUM_ROWS, NUM_COLUMNS)
 
-    for i in range(0, num_iterations):
-        # Evaluar las cadenas del input del set de entrenamiento.
-        # Output: arreglo de valores verdaderos y falsos según su aceptación
-        # o rechazo.
+    for i in range(0, num_generations):
+        # Evaluate the population with all the strings of the training set.
+        # Output: array with accepted (as true) and rejected (as false) values.  
         predicted_output_train = predict(population, training_set)
 
-        #print(str(predicted_output_train) + "\n")
-
-        # Using training set expected values (Y's).
-        precision, recall, accuracy = calculate_performance(training_set,
+        # Get the performance for all tables.
+        accuracies, precisions, recalls = calculate_performance(training_set,
             predicted_output_train)
 
-        population = append_generation(population, accuracy, precision, recall)
+        # Create the next generation based on the performance of the current generation.
+        population = create_next_generation(population, accuracies, precisions, recalls)
 
-    # Evaluar las cadenas del input del set de entrenamiento.
-    # Output: arreglo de valores verdaderos y falsos según su aceptación
-    # o rechazo.
+        # Get the best table of all the population.
+        best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
+        clear_terminal()
+        print("Best table: ")
+        print_table(best_table)
+
+    # Evaluate the population of the final generation with all the string of the validation set.
     predicted_output_train = predict(population, validation_set)
 
-    # Using training set expected values (Y's).
-    precision, recall, accuracy = calculate_performance(validation_set,
+    # Get the performance for all tables of the final generation.
+    validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
         predicted_output_train)
 
+    # Get the best table of all the population.
+    best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
+    
     print("Final Results")
-
-    average_precision = 0
-    average_recall = 0
-    performances = []
-    index = 0
-    for k in range(0, len(accuracy)):
-        performances.append((accuracy[k], precision[k], recall[k], index))
-        index += 1
-    performances.sort(reverse=True)
-
-    print("Best Accuracy: {}".format(performances[0][0]))
-    print("Best Precision: {}".format(performances[0][1]))
-    print("Best Recall: {}".format(performances[0][2]))
+    print("Best Accuracy: {}".format(best_accuracy))
+    print("Best Precision: {}".format(best_precision))
+    print("Best Recall: {}".format(best_recall))
     print("Best Table: ")
-    print_table(population[performances[0][3]])
+    print_table(best_table)
 
-    print("Timeouts Total {}".format(TIMEOUTS))
+    if IN_DEBUG_MODE:
+        print("Total Timeouts {}".format(TIMEOUTS))
 
 
-# Agregar columnas
-# Quitar columnas
-# Elitismo (pasar la mejor a la siguiente generación con la mejor tabla)
-# Local search (ir agregando/quitando filas y evaluando accuracy)
+# TODO: Agregar columnas
+# TODO: Quitar columnas
+# TODO: Elitismo (pasar la mejor a la siguiente generación con la mejor tabla)
+# TODO: Local search (ir agregando/quitando filas y evaluando accuracy)
