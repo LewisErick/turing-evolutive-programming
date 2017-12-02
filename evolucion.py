@@ -233,10 +233,10 @@ def shrink_population(population, accuracy):
         if new_row_size < MIN_ROW:
             new_row_size = MIN_ROW
         for table in population:
-            table = np.matrix(table)
-            table = table[0:new_row_size,:]
-            table = table.tolist()
-            new_population.append(table)
+            new_table = np.matrix(table)
+            new_table = new_table[0:new_row_size,:]
+            new_table = new_table.tolist()
+            new_population.append(new_table)
         return new_population
     else:
         return population
@@ -248,6 +248,7 @@ def shrink_population(population, accuracy):
 # This translates to: adding more states to the machine.
 def augment_population(population, accuracy):
     global NUM_ROWS
+    new_population = []
     if len(population[0]) < MAX_ROW:
         max_augment = int(MAX_AUGMENT_RATE*(1-accuracy))+1
         if max_augment == 1:
@@ -258,8 +259,12 @@ def augment_population(population, accuracy):
             NUM_ROWS = MAX_ROW
         population_to_append = generate_random_population(append_size, NUM_COLUMNS)
         for append_table, table in zip(population_to_append, population):
+            new_table = table[:]
+
             for row in append_table:
-                table.append(row)
+                new_table.append(row)
+            new_population.append(new_table)
+        return new_population
     return population
 
 # Input: Population, Accuracy List for each table in the population.
@@ -281,75 +286,68 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             average_accuracy += performances[j][0]
         average_precision = average_precision / int(len(performances)/2)
         average_recall = average_recall / int(len(performances)/2)
-        average_accuracy = max(accuracy)
+        max_accuracy = max(accuracy)
 
         if average_precision < 0.75:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
 
-            shrinked_population = shrink_population(population, average_accuracy)
+            shrinked_population = shrink_population(population, max_accuracy)
             predicted_output_shrink = predict(shrinked_population, training_set)
             shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                 predicted_output_shrink)
 
-            if len(shrink_accuracies) == 0:
-                print("Wait what {}x{}".format(len(shrinked_population[0]),
-                    len(shrinked_population[0][0])))
+            '''
             shrink_timeout = 0
-            print("Gonna try shrinking...")
-
             dimensions_tried = []
 
-            while max(shrink_accuracies) < average_accuracy and shrink_timeout < TIMEOUT_LIMIT:
-                shrinked_population = shrink_population(population, average_accuracy)
-                if len(shrinked_population[0]) in dimensions_tried:
-                    next
+            while max(shrink_accuracies) < max_accuracy and shrink_timeout < 10:
+                shrinked_population = shrink_population(population, max_accuracy)
+                if (len(shrinked_population[0]) in dimensions_tried):
+                    continue
                 dimensions_tried.append(len(shrinked_population[0]))
                 if len(shrinked_population[0]) == len(population[0]):
-                    next
+                    continue
                 predicted_output_shrink = predict(shrinked_population, training_set)
                 shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                     predicted_output_shrink)
                 shrink_timeout += 1
+            '''
 
-            if max(shrink_accuracies) > average_accuracy:
-                print("Shrinking worked!")
+            if max(shrink_accuracies) > max_accuracy:
+                shrinked = True
                 population = shrinked_population
                 accuracy = shrink_accuracies
                 precision = shrink_precisions
                 recall = shrink_recall
-            else:
-                print("Shrinking made no difference.")
 
             if IN_DEBUG_MODE:
                 print("Shrink")
-        elif average_recall < 0.75:
+        if average_recall < 0.75:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
 
-            augmented_population = augment_population(population, average_accuracy)
+            augmented_population = augment_population(population, max_accuracy)
             predicted_output_augment = predict(augmented_population, training_set)
             augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
                 predicted_output_augment)
 
+            '''
             augment_timeout = 0
-            print("Gonna try augmenting...")
-            while max(augment_accuracies) < average_accuracy and augment_timeout < TIMEOUT_LIMIT:
-                augmented_population = augment_population(population, average_accuracy)
+            while max(augment_accuracies) < max_accuracy and augment_timeout < 10:
+                augmented_population = augment_population(population, max_accuracy)
                 predicted_output_augment = predict(augmented_population, training_set)
                 augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
                     predicted_output_augment)
+            '''
 
-            if max(augment_accuracies) > average_accuracy:
-                print("Augmenting worked!")
+            if max(augment_accuracies) > max_accuracy:
                 population = augmented_population
                 accuracy = augment_accuracies
                 precision = augment_precisions
                 recall = augment_recall
-            else:
-                print("Augmenting did nothing.")
 
             if IN_DEBUG_MODE:
                 print("Augment")
@@ -374,7 +372,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
     return new_population, True
 
 def cross_over(table_A, table_B, accuracy=0):
-    pos = int(random.randrange(1, len(table_A)-1)*(1-accuracy))
+    pos = int(random.randrange(int((len(table_A)-1)*(1-accuracy)), len(table_A)-1))
     return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # Input: Population, Accuracy List for each table in the population.
@@ -404,7 +402,7 @@ def mutation(table, accuracy=0):
     for i in range(0, len(table)):
         for j in range(0, len(table[0])):
             #TODO: variar la magnitud del -1000 en base al accuracy de la tabla.
-            r = random.randrange(int(-1000*accuracy), 3)
+            r = random.randrange(int(-100*accuracy), 3)
             new_table_state = table[i][j]
             if r > 0:
                 # Next-Step
@@ -439,7 +437,7 @@ def clear_terminal():
 
 if __name__ == "__main__":
     global ELITISM_TOLERANCE
-    iohelp.set_even(50)
+    iohelp.set_even(100)
 
     # Parse Input
     parsed_input = iohelp.get()
@@ -462,7 +460,6 @@ if __name__ == "__main__":
 
     # Generates a population of random tables.
     population = generate_random_population(NUM_ROWS, NUM_COLUMNS)
-    clear_terminal()
 
     for i in range(0, num_generations):
         # Evaluate the population with all the strings of the training set.
@@ -487,27 +484,18 @@ if __name__ == "__main__":
         if ELITISM_TOLERANCE == int(num_generations/10):
             break
 
-        print("Generation #{}".format(i+1))
-        print("Elitism tolerance: {}".format(ELITISM_TOLERANCE))
-        print("Best accuracy: {}".format(best_accuracy))
-        print("Best precision: {}".format(best_precision))
-        print("Best recall: {}".format(best_recall))
-        print("Table dimensions: {}x{}".format(len(population[index]), len(population[index][0])))
-        #print("Best table: ")
-        #print_table(population[index])
-
-        '''
         if IN_DEBUG_MODE:
             clear_terminal()
+            print("Elitism Tolerance: {}".format(ELITISM_TOLERANCE))
             print("Best accuracy: {}".format(best_accuracy))
             print("Best table: ")
             print_table(population[index])
         else:
             clear_terminal()
+            print("Elitism Tolerance: {}".format(ELITISM_TOLERANCE))
             print("Best accuracy: {}".format(best_accuracy))
-            print("Best table: ")
-            print_table(population[index])
-        '''
+            #print("Best table: ")
+            #print_table(population[index])
 
         if continue_creating is not True:
             break
