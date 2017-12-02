@@ -386,17 +386,10 @@ if __name__ == "__main__":
             print("Best table: ")
             print_table(best_table)
 
-    # Evaluate the population of the final generation with all the string of the validation set.
-    predicted_output_validation = predict(population, validation_set)
-
-    # Get the performance for all tables of the final generation.
-    validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
-        predicted_output_validation)
-
     # Get the best table of all the generations.
     best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
 
-    print("Final Results")
+    print("Final Results for Training Set")
     print("Best Accuracy: {}".format(best_accuracy))
     print("Best Precision: {}".format(best_precision))
     print("Best Recall: {}".format(best_recall))
@@ -407,9 +400,12 @@ if __name__ == "__main__":
         print("Total Timeouts {}".format(TIMEOUTS))
 
 
+    # Evaluate the population of the final generation with all the string of the validation set.
+    predicted_output_validation = predict(population, validation_set)
 
-    '''
-    print("Final Results for Validation Set")
+    # Get the performance for all tables of the final generation.
+    validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
+        predicted_output_validation)
 
     average_precision = 0
     average_recall = 0
@@ -420,9 +416,29 @@ if __name__ == "__main__":
         index += 1
     performances.sort(reverse=True)
 
+    print("Final Results for Validation Set")
     print("Best Accuracy: {}".format(performances[0][0]))
     print("Best Precision: {}".format(performances[0][1]))
     print("Best Recall: {}".format(performances[0][2]))
+    print("Prediction Set Y: {}".format(predicted_output_validation[performances[0][3]]))
+    print("Validation Set Y: {}".format(validation_set[:,1:].tolist()))
+    print(validation_set.shape)
+
+    '''
+    # Evaluate the population of the final generation with all the string of the validation set.
+    predicted_output_validation = predict(population, validation_set)
+
+    # Get the performance for all tables of the final generation.
+    validation_accuracies, validation_precisions, validation_recalls = calculate_performance(validation_set,
+        predicted_output_validation)
+
+    # Get the best performance of the Validation Set.
+    best_table, best_accuracy, best_precision, best_recall = get_best_table(population, accuracies, precisions, recalls)
+
+    print("Final Results for Validation Set")
+    print("Best Accuracy: {}".format(best_accuracy))
+    print("Best Precision: {}".format(best_precision))
+    print("Best Recall: {}".format(best_recall))
     print("Prediction Set Y: {}".format(predicted_output_validation[performances[0][3]]))
     print("Validation Set Y: {}".format(validation_set[:,1:].tolist()))
     print(validation_set.shape)
