@@ -428,7 +428,7 @@ def clear_terminal():
 if __name__ == "__main__":
     global ELITISM_TOLERANCE
     global BEST_ACCURACY
-    iohelp.set_even(50)
+    iohelp.set_even(100)
 
     # Parse Input
     parsed_input = iohelp.get()
