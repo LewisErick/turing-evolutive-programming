@@ -15,7 +15,7 @@ import pprint
 # Setup optimal string and GA input variables.
 #
 
-IN_DEBUG_MODE = True
+IN_DEBUG_MODE = False
 
 TIMEOUTS = 0
 
