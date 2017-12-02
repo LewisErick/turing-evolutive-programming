@@ -237,8 +237,10 @@ def shrink_population(population, accuracy):
             table = table[0:new_row_size,:]
             table = table.tolist()
             new_population.append(table)
+        return new_population
+    else:
+        return population
 
-    return new_population
 
 # Adds more rows with randomly generated states to the Turing Machine transition
 # table.
@@ -281,7 +283,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
         average_recall = average_recall / int(len(performances)/2)
         average_accuracy = max(accuracy)
 
-        if average_precision < 0.5:
+        if average_precision < 0.75:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
@@ -291,25 +293,37 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                 predicted_output_shrink)
 
+            if len(shrink_accuracies) == 0:
+                print("Wait what {}x{}".format(len(shrinked_population[0]),
+                    len(shrinked_population[0][0])))
             shrink_timeout = 0
-            predicted_output_shrink = None
+            print("Gonna try shrinking...")
+
+            dimensions_tried = []
+
             while max(shrink_accuracies) < average_accuracy and shrink_timeout < TIMEOUT_LIMIT:
-                print(len(shrinked_population[0]))
                 shrinked_population = shrink_population(population, average_accuracy)
+                if len(shrinked_population[0]) in dimensions_tried:
+                    next
+                dimensions_tried.append(len(shrinked_population[0]))
+                if len(shrinked_population[0]) == len(population[0])
                 predicted_output_shrink = predict(shrinked_population, training_set)
                 shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                     predicted_output_shrink)
                 shrink_timeout += 1
 
             if max(shrink_accuracies) > average_accuracy:
+                print("Shrinking worked!")
                 population = shrinked_population
                 accuracy = shrink_accuracies
                 precision = shrink_precisions
                 recall = shrink_recall
+            else:
+                print("Shrinking made no difference.")
 
             if IN_DEBUG_MODE:
                 print("Shrink")
-        elif average_recall < 0.5:
+        elif average_recall < 0.75:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
@@ -320,6 +334,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                 predicted_output_augment)
 
             augment_timeout = 0
+            print("Gonna try augmenting...")
             while max(augment_accuracies) < average_accuracy and augment_timeout < TIMEOUT_LIMIT:
                 augmented_population = augment_population(population, average_accuracy)
                 predicted_output_augment = predict(augmented_population, training_set)
@@ -327,10 +342,13 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                     predicted_output_augment)
 
             if max(augment_accuracies) > average_accuracy:
+                print("Augmenting worked!")
                 population = augmented_population
                 accuracy = augment_accuracies
                 precision = augment_precisions
                 recall = augment_recall
+            else:
+                print("Augmenting did nothing.")
 
             if IN_DEBUG_MODE:
                 print("Augment")
@@ -443,6 +461,7 @@ if __name__ == "__main__":
 
     # Generates a population of random tables.
     population = generate_random_population(NUM_ROWS, NUM_COLUMNS)
+    clear_terminal()
 
     for i in range(0, num_generations):
         # Evaluate the population with all the strings of the training set.
@@ -467,12 +486,11 @@ if __name__ == "__main__":
         if ELITISM_TOLERANCE == int(num_generations/10):
             break
 
-        clear_terminal()
         print("Generation #{}".format(i+1))
         print("Elitism tolerance: {}".format(ELITISM_TOLERANCE))
         print("Best accuracy: {}".format(best_accuracy))
-        print("Best accuracy: {}".format(best_precision))
-        print("Best accuracy: {}".format(best_recall))
+        print("Best precision: {}".format(best_precision))
+        print("Best recall: {}".format(best_recall))
         print("Table dimensions: {}x{}".format(len(population[index]), len(population[index][0])))
         #print("Best table: ")
         #print_table(population[index])
