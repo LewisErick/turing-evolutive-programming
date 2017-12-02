@@ -11,10 +11,9 @@ import pprint
 # Setup optimal string and GA input variables.
 #
 
-OPTIMAL     = "Hello, World"
-DNA_SIZE    = len(OPTIMAL)
-POP_SIZE    = 20
-GENERATIONS = 5000
+TIMEOUTS = 0
+
+POP_SIZE = 100
 
 # columns -> language elements
 NUM_COLUMNS = 5
@@ -30,7 +29,13 @@ MAX_ROW = 99
 
 MAX_AUGMENT_RATE = 3
 
-LANGUAGE = {"0": 0, "1": 1}
+LANGUAGE = {"0": 0, "1": 1, " ": 2, "X": 3, "Y": 4}
+LANGUAGE_INDEX = ["0", "1", " ", "X", "Y"]
+
+INFINITE_TAPE_SIZE = 50
+
+def index_to_letter(index):
+    return LANGUAGE_INDEX[index]
 
 #
 # Helper functions
@@ -61,7 +66,6 @@ def random_state(numStates, numLetters):
   movement = random.randrange(0, 2)
   return { "next_state": next_state, "replace_letter": replace_letter, "movement": movement }
 
-# TODO(Uriel96)
 def random_population(num_rows, num_columns):
   tables = []
   for i in range(POP_SIZE):
@@ -73,7 +77,6 @@ def random_population(num_rows, num_columns):
     tables.append(table)
   return tables
 
-# TODO(Uriel96)
 def print_table(table):
   pp = pprint.PrettyPrinter(indent=4)
   pp.pprint(table)
@@ -91,7 +94,7 @@ def get_validation_set(parsed_input):
 # Maps the symbol to its index in the transition table.
 def matrix_column(symbol):
     try:
-        LANGUAGE[symbol]
+        return LANGUAGE[symbol]
     except KeyError:
         return 0
 
@@ -101,8 +104,9 @@ def matrix_column(symbol):
 #       Each cell in the row represents the acceptance or rejection of the
 #       training when run through the transition table.
 def predict(population, training_set):
+    global TIMEOUTS
     training_set_x = training_set[:, 0:training_set.shape[1]-1]
-    training_set_y = training_set[:, training_set.shape[1]:]
+    training_set_y = training_set[:, training_set.shape[1]-1:]
 
     predict_matrix = []
 
@@ -111,8 +115,8 @@ def predict(population, training_set):
     for table in population:
         # Process acceptance () or denial (false) for each example in the
         # transition.
-        for example in training_set_y:
-            assert isinstance(example, basestring)
+        predict_row = []
+        for example in training_set_x:
             # Initial state of Turing Machine
             state = 0
             # Timeout control
@@ -120,22 +124,33 @@ def predict(population, training_set):
             # Head of Turing Machine
             head = 0
             # Example copy for modifications
-            mod_example = example
+            mod_example = list(str(example.item(0)))
 
-            while timeout < 1000 and state is not 1 and state is not 2 and head >= len(example):
+            for i in range(0, INFINITE_TAPE_SIZE*2):
+                mod_example.append(" ")
+
+            while timeout < 10000 and state is not 1 and state is not 2 and head > INFINITE_TAPE_SIZE*-1 and head < len(mod_example) - INFINITE_TAPE_SIZE:
                 if head < 0:
                     current_character = ""
                 else:
                     current_character = mod_example[head]
-                column_index = matrix_column(current_character)
+                column_index = matrix_column(str(current_character))
 
+                if state >= len(table):
+                    state = len(table)-1
                 transition = table[state][column_index]
+
+                #print("Transition: {}".format(transition))
                 next_state = transition["next_state"]
-                replace_letter = transition["replace_letter"]
+                replace_letter = index_to_letter(transition["replace_letter"])
                 movement = transition["movement"]
 
                 state = next_state
                 mod_example[head] = replace_letter
+
+                #print("Movement: {}".format(movement))
+                #print("State: {}".format(state))
+                #print("****")
 
                 if movement == 0:
                     head -= 1
@@ -145,7 +160,8 @@ def predict(population, training_set):
                 timeout += 1
 
             # The run timed out. Invalid transition table for this example.
-            if timout >= 1000:
+            if timeout >= 1000:
+                TIMEOUTS += 1
                 predict_row.append(False)
             # 1 is the row of the accepted state
             elif state is 1:
@@ -155,7 +171,7 @@ def predict(population, training_set):
                 predict_row.append(False)
 
         predict_matrix.append(predict_row)
-
+        #print("---")
     return predict_matrix
 
 # Input: Training set, Predicted Output (matrix)
@@ -172,6 +188,8 @@ def calculate_performance(training_set, predicted_output_train):
     # Array with the accuracy values (0 to 1) for each of the training examples.
     accuracy = []
 
+    #print(predicted_output_train)
+
     training_set_y = list(training_set[:, training_set.shape[1]-1])
     for table_output in predicted_output_train:
         true_positives = 0
@@ -179,6 +197,12 @@ def calculate_performance(training_set, predicted_output_train):
         false_positives = 0
         false_negatives = 0
         for prediction, real_value in zip(table_output, training_set_y):
+            real_value = int(real_value.item(0))
+            if real_value == 0:
+                real_value = False
+            elif real_value == 1:
+                real_value = True
+            #print(real_value)
             if prediction == real_value:
                 if prediction is True:
                     true_positives += 1
@@ -189,24 +213,39 @@ def calculate_performance(training_set, predicted_output_train):
                     false_positives += 1
                 else:
                     false_negatives += 1
-        precision.append(true_positives/(true_positives+false_positives))
-        recall.append(true_positives/(true_positives+false_negatives))
-        accuracy.append((true_positives+true_negatives)/training_set.shape[0])
+        #print("True positives: {}".format(true_positives))
+        #print("True negatives: {}".format(true_negatives))
+        #print("False positives: {}".format(false_positives))
+        #print("False negatives: {}".format(false_negatives))
+        if true_positives+false_positives == 0:
+            precision.append(0)
+        else:
+            precision.append(float(true_positives)/float(true_positives+false_positives))
+        if true_positives+false_negatives == 0:
+            recall.append(0)
+        else:
+            recall.append(float(true_positives)/float(true_positives+false_negatives))
+        accuracy.append(float(true_positives+true_negatives)/training_set.shape[0])
 
     return [precision, recall, accuracy]
 
 def shrink_population(population):
-    if (population.shape[0] > MIN_ROW):
-        new_row_size = population.shape[0] - random.randrange(0, population.shape[0]-MIN_ROW)
-        population = population[0:new_row_size,:]
-    return population
+    new_population = []
+    for table in population:
+        if (len(table) > MIN_ROW):
+            new_row_size = len(table) - random.randrange(0, len(table)-MIN_ROW)
+            table = np.matrix(table)
+            table = table[0:new_row_size,:]
+            table = table.tolist()
+        new_population.append(table)
+    return new_population
 
 # Adds more rows with randomly generated states to the Turing Machine transition
 # table.
 #
 # This translates to: adding more states to the machine.
 def augment_population(population):
-    if (population.shape[0] < MAX_ROW):
+    if len(population) < MAX_ROW:
         append_size = random.randrange(1, MAX_AUGMENT_RATE)
         population_to_append = random_population(append_size, NUM_COLUMNS)
         for append_table, table in zip(population_to_append, population):
@@ -215,110 +254,163 @@ def augment_population(population):
     return population
 
 # Input: Population, Accuracy List for each table in the population.
-def append_generation(population, accuracy=None):
-  new_population = []
-  for table in population:
-    #Pick Two Tables
-    table_A = pick_random_table(population, accuracy)
-    table_B = pick_random_table(population, accuracy)
+def append_generation(population, accuracy=None, precision=None, recall=None):
+    new_population = []
 
-    #Cross Them
-    new_table = cross_over(table_A, table_B)
+    if accuracy is not None:
+        average_precision = 0
+        average_recall = 0
+        performances = []
+        for k in range(0, len(accuracy)):
+            performances.append((accuracy[k], precision[k], recall[k]))
+        performances.sort(reverse=True)
+        for j in range(0, len(performances)/2):
+            average_precision = performances[j][1]
+            average_recall = performances[j][2]
+        average_precision = average_precision / (len(performances)/2)
+        average_recall = average_recall / (len(performances)/2)
 
-    #Mutate Table
-    new_table = mutation(new_table)
+        #print("Average precison: {}".format(average_precision))
+        #print("Average recall: {}".format(average_recall))
 
-    #Add It to New Population
-    new_population.append(new_table)
-  return new_population
+        if average_precision < 0.5:
+            #print("Shrink")
+            #population = shrink_population(population)
+            population = augment_population(population)
+        elif average_recall < 0.5:
+            #print("Augment")
+            #population = shrink_population(population)
+            population = augment_population(population)
 
-# TODO(Uriel96)
+    for table in population:
+      #Pick Two Tables
+      table_A = pick_random_table(population, accuracy)
+      table_B = pick_random_table(population, accuracy)
+
+      #Cross Them
+      new_table = cross_over(table_A, table_B)
+
+      #Mutate Table
+      new_table = mutation(new_table)
+      new_population.append(new_table)
+    return new_population
+
 def cross_over(table_A, table_B):
   pos = random.randrange(1, NUM_ROWS-1)
   return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
-# TODO(Uriel96)
 # Input: Population, Accuracy List for each table in the population.
-def pick_random_table(population, accuracy):
-  #TODO: Pick Random Table Based on Fitness
-  '''
-  index = 0
-  r = random.randrange(0, 2)
-  while r > 0:
-    r = r - population[index].fitness
-    index += 1
-  index -= 1
-  return population[index]
-  '''
-  return population[random.randrange(0, len(population))]
+def pick_random_table(population, accuracies):
+    if accuracies is not None:
+      """
+      Chooses a random element from items, where items is a list of tuples in
+      the form (item, weight). weight determines the probability of choosing its
+      respective item. Note: this function is borrowed from ActiveState Recipes.
+      """
+      weight_total = sum(accuracies)
+      n = random.uniform(0, weight_total)
+      for table, accuracy in zip(population, accuracies):
+        if n < accuracy:
+          return table
+        n = n - accuracy
+      return table
+    else:
+      return population[random.randrange(0, len(population))]
 
 # Changes randomly one of the following:
 # next_state, replace_letter, movement
 # for all cells in the matrix.
-def mutation(population):
-    for i in range(0, len(population)):
-        for j in range(0, len(population[0])):
-            r = random.randrange(0, 3)
-            new_population_state = population[i][j]
+def mutation(table):
+    for i in range(0, len(table)):
+        for j in range(0, len(table[0])):
+            #TODO: variar la magnitud del -1000 en base al accuracy de la tabla.
+            r = random.randrange(-1000, 3)
+            new_table_state = table[i][j]
             if r > 0:
                 # Next-Step
                 if r == 1:
-                    new_population_state["next_step"] = random.randrange(0, NUM_ROWS)
+                    new_table_state["next_state"] = random.randrange(0, NUM_ROWS)
                 # Replace Letter
                 elif r == 2:
-                    new_population_state["replace_letter"] = random.randrange(0, NUM_COLUMNS)
+                    new_table_state["replace_letter"] = random.randrange(0, NUM_COLUMNS)
                 # Movement
                 elif r == 3:
-                    new_population_state["movement"] = random.randrange(0, 2)
-                population[i][j] = new_population_state
+                    new_table_state["movement"] = random.randrange(0, 2)
+                table[i][j] = new_table_state
 
-    return population
+    return table
 
 if __name__ == "__main__":
-  # Parse Input
-  parsed_input = io.get()
+    # Parse Input
+    parsed_input = io.get()
 
-  # Paso 1: Generar Tablas Random
-  # Generate initial population. This will create a list of POP_SIZE strings,
-  # each initialized to a sequence of random characters.
-  population = random_population(NUM_ROWS, NUM_COLUMNS)
+    # Paso 1: Generar Tablas Random
+    # Generate initial population. This will create a list of POP_SIZE strings,
+    # each initialized to a sequence of random characters.
+    population = random_population(NUM_ROWS, NUM_COLUMNS)
 
-  # x is your dataset
-  np.random.shuffle(parsed_input)
+    # x is your dataset
+    np.random.shuffle(parsed_input)
 
-  # Training Set
-  training_set = get_training_set(parsed_input)
+    # Training Set
+    training_set = get_training_set(parsed_input)
 
-  # Validation Set
-  validation_set = get_validation_set(parsed_input)
+    # Validation Set
+    validation_set = get_validation_set(parsed_input)
 
-  num_iterations = input("Indica el numero de iteraciones para el entrenamiento")
+    num_iterations = input("Indica el numero de iteraciones para el entrenamiento")
 
-  population = append_generation(population)
-  '''
+    predicted_output_train = None
+    precision = None
+    recall = None
+    accuracy = None
 
-  for i in range(0, num_iterations):
-      # Evaluar las cadenas del input del set de entrenamiento.
-      # Output: arreglo de valores verdaderos y falsos según su aceptación
-      # o rechazo.
-      predicted_output_train = predict(population, training_set)
+    population = append_generation(population)
 
-      # Using training set expected values (Y's).
-      precision, recall, accuracy = calculate_performance(training_set,
+    for i in range(0, num_iterations):
+        # Evaluar las cadenas del input del set de entrenamiento.
+        # Output: arreglo de valores verdaderos y falsos según su aceptación
+        # o rechazo.
+        predicted_output_train = predict(population, training_set)
+
+        #print(str(predicted_output_train) + "\n")
+
+        # Using training set expected values (Y's).
+        precision, recall, accuracy = calculate_performance(training_set,
+            predicted_output_train)
+
+        population = append_generation(population, accuracy, precision, recall)
+
+    # Evaluar las cadenas del input del set de entrenamiento.
+    # Output: arreglo de valores verdaderos y falsos según su aceptación
+    # o rechazo.
+    predicted_output_train = predict(population, validation_set)
+
+    # Using training set expected values (Y's).
+    precision, recall, accuracy = calculate_performance(validation_set,
         predicted_output_train)
 
-      average_precision = reduce(lambda x, y: x + y, precision) / len(precision)
-      average_recall = reduce(lambda x, y: x + y, recall) / len(recall)
+    print("Final Results")
 
-      # Small precision means we're having too many false positives: our
-      # population of transition tables is overfitting.
-      if average_precision < 0.5:
-          shrink_population(population)
-      # Small recall means we're having too many false negatives: our population
-      # of transition tables is underfitting.
-      elif recall < 0.5:
-          augment_population(population)
+    average_precision = 0
+    average_recall = 0
+    performances = []
+    index = 0
+    for k in range(0, len(accuracy)):
+        performances.append((accuracy[k], precision[k], recall[k], index))
+        index += 1
+    performances.sort(reverse=True)
 
-      # Choose the best from the population for the generation
-      generation = append_generation(population, accuracy)
-   '''
+    print("Best Accuracy: {}".format(performances[0][0]))
+    print("Best Precision: {}".format(performances[0][1]))
+    print("Best Recall: {}".format(performances[0][2]))
+    print("Best Table: ")
+    print_table(population[performances[0][3]])
+
+    print("Timeouts Total {}".format(TIMEOUTS))
+
+
+# Agregar columnas
+# Quitar columnas
+# Elitismo (pasar la mejor a la siguiente generación con la mejor tabla)
+# Local search (ir agregando/quitando filas y evaluando accuracy)
