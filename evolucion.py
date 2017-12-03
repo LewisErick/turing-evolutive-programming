@@ -511,6 +511,7 @@ if __name__ == "__main__":
 
         if IN_DEBUG_MODE == False:
             clear_terminal()
+        print("Generation #{}".format(i+1))
         print("Best Accuracy: {}".format(best_accuracy))
         print("Dimensions of table {}x{}".format(len(population[index]), len(population[index][0])))
 
