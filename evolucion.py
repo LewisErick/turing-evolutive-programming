@@ -369,11 +369,11 @@ def augment_population_if_needed(population, accuracy, precision, recall, traini
 
 # Input: Population, Accuracy List for each table in the population.
 def create_next_generation(population, accuracy, precision, recall, training_set):
-    population, accuracy, precision, recall = shrink_population_if_needed(population,
-        accuracy, precision, recall, training_set)
+    #population, accuracy, precision, recall = shrink_population_if_needed(population,
+    #    accuracy, precision, recall, training_set)
 
-    population, accuracy, precision, recall = augment_population_if_needed(population,
-        accuracy, precision, recall, training_set)
+    #population, accuracy, precision, recall = augment_population_if_needed(population,
+    #    accuracy, precision, recall, training_set)
 
     new_population = []
     for i in range(0,int(POP_SIZE/2)):
