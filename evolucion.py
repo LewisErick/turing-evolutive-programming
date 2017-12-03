@@ -461,7 +461,6 @@ def clear_terminal():
         os.system( 'clear' )
 
 if __name__ == "__main__":
-    global ELITISM_TOLERANCE
     iohelp.set_even(100)
 
     # Parse Input
@@ -476,7 +475,8 @@ if __name__ == "__main__":
     # Validation Set
     validation_set = get_validation_set(parsed_input)
 
-    num_generations = int(input("Indica el numero de iteraciones para el entrenamiento: "))
+    num_generations = int(input("Number of generations: "))
+    POP_SIZE = int(input("Population size: "))
 
     predicted_output_train = None
     precision = None
@@ -548,4 +548,3 @@ if __name__ == "__main__":
     print("Best Recall: {}".format(best_recall))
     print("Prediction Set Y: {}".format(predicted_output_validation[index]))
     print("Validation Set Real Y: {}".format(validation_set[:,1:].tolist()))
-    #print(validation_set.shape)
