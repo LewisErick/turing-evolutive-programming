@@ -288,7 +288,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
         average_recall = average_recall / int(len(performances)/2)
         max_accuracy = max(accuracy)
 
-        if average_precision < 0.75:
+        if average_precision < 0.5:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
@@ -298,11 +298,10 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                 predicted_output_shrink)
 
-            '''
             shrink_timeout = 0
             dimensions_tried = []
 
-            while max(shrink_accuracies) < max_accuracy and shrink_timeout < 10:
+            while max(shrink_accuracies) < max_accuracy and shrink_timeout < TIMEOUT_LIMIT:
                 shrinked_population = shrink_population(population, max_accuracy)
                 if (len(shrinked_population[0]) in dimensions_tried):
                     continue
@@ -313,7 +312,6 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                 shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                     predicted_output_shrink)
                 shrink_timeout += 1
-            '''
 
             if max(shrink_accuracies) > max_accuracy:
                 shrinked = True
@@ -324,7 +322,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
 
             if IN_DEBUG_MODE:
                 print("Shrink")
-        if average_recall < 0.75:
+        if average_recall < 0.5:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
@@ -334,14 +332,12 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
                 predicted_output_augment)
 
-            '''
             augment_timeout = 0
-            while max(augment_accuracies) < max_accuracy and augment_timeout < 10:
+            while max(augment_accuracies) < max_accuracy and augment_timeout < TIMEOUT_LIMIT:
                 augmented_population = augment_population(population, max_accuracy)
                 predicted_output_augment = predict(augmented_population, training_set)
                 augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
                     predicted_output_augment)
-            '''
 
             if max(augment_accuracies) > max_accuracy:
                 population = augmented_population
@@ -492,8 +488,10 @@ if __name__ == "__main__":
             print_table(population[index])
         else:
             clear_terminal()
+            print("Generation #{}".format(i+1))
             print("Elitism Tolerance: {}".format(ELITISM_TOLERANCE))
             print("Best accuracy: {}".format(best_accuracy))
+            print("Table dimensions {}x{}".format(len(population[0]), len(population[0][0])))
             #print("Best table: ")
             #print_table(population[index])
 
