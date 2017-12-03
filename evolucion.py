@@ -14,22 +14,14 @@ import os
 
 import pprint
 
-#
-# Global variables
-# Setup optimal string and GA input variables.
-#
-
 IN_DEBUG_MODE = False
 
 TIMEOUTS = 0
 
 POP_SIZE = 100
 
-# columns -> language elements
-NUM_COLUMNS = 20
-
-# rows -> number of states (minimum 3: initial, acceptance, rejection)
-NUM_ROWS = 20
+NUM_COLUMNS = 5
+NUM_ROWS = 5
 
 MIN_COLUMN = 3
 MIN_ROW = 3
@@ -300,7 +292,8 @@ def augment_population(population, accuracy):
     return population
 
 def shrink_population_if_needed(population, accuracy, precision, recall, training_set):
-    print("Verifying if shrinking can improve accuracy...")
+    if IN_DEBUG_MODE:
+        print("Verifying if shrinking can improve accuracy...")
     shrinked_population = shrink_population(population, max(accuracy))
     predicted_output_shrink = predict(shrinked_population, training_set)
     shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
@@ -324,8 +317,9 @@ def shrink_population_if_needed(population, accuracy, precision, recall, trainin
             predicted_output_shrink)
 
     if max(shrink_accuracies) > max(accuracy):
-        print("Shrinking improved predictions. New {} Prev {}".format(max(shrink_accuracies),
-            max(accuracy)))
+        if IN_DEBUG_MODE:
+            print("Shrinking improved predictions. New {} Prev {}".format(max(shrink_accuracies),
+                max(accuracy)))
         shrinked = True
         population = shrinked_population
         accuracy = shrink_accuracies
@@ -334,11 +328,13 @@ def shrink_population_if_needed(population, accuracy, precision, recall, trainin
         NUM_ROWS = len(population[0])
         NUM_COLUMNS = len(population[0][0])
     else:
-        print("Shrinking didn't improve predictions.")
+        if IN_DEBUG_MODE:
+            print("Shrinking didn't improve predictions.")
     return population, accuracy, precision, recall
 
 def augment_population_if_needed(population, accuracy, precision, recall, training_set):
-    print("Verifying if augmenting can improve accuracy...")
+    if IN_DEBUG_MODE:
+        print("Verifying if augmenting can improve accuracy...")
     augmented_population = augment_population(population, max(accuracy))
     predicted_output_augment = predict(augmented_population, training_set)
     augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
@@ -355,8 +351,9 @@ def augment_population_if_needed(population, accuracy, precision, recall, traini
             predicted_output_augment)
 
     if max(augment_accuracies) > max(accuracy):
-        print("Augmentation improved predictions. New {} Prev {}".format(max(augment_accuracies),
-            max(accuracy)))
+        if IN_DEBUG_MODE:
+            print("Augmentation improved predictions. New {} Prev {}".format(max(augment_accuracies),
+                max(accuracy)))
         population = augmented_population
         accuracy = augment_accuracies
         precision = augment_precisions
@@ -364,16 +361,17 @@ def augment_population_if_needed(population, accuracy, precision, recall, traini
         NUM_ROWS = len(population[0])
         NUM_COLUMNS = len(population[0][0])
     else:
-        print("Augmenting didn't improve predictions.")
+        if IN_DEBUG_MODE:
+            print("Augmenting didn't improve predictions.")
     return population, accuracy, precision, recall
 
 # Input: Population, Accuracy List for each table in the population.
 def create_next_generation(population, accuracy, precision, recall, training_set):
-    #population, accuracy, precision, recall = shrink_population_if_needed(population,
-    #    accuracy, precision, recall, training_set)
+    population, accuracy, precision, recall = shrink_population_if_needed(population,
+        accuracy, precision, recall, training_set)
 
-    #population, accuracy, precision, recall = augment_population_if_needed(population,
-    #    accuracy, precision, recall, training_set)
+    population, accuracy, precision, recall = augment_population_if_needed(population,
+        accuracy, precision, recall, training_set)
 
     new_population = []
     for i in range(0,int(POP_SIZE/2)):
@@ -511,19 +509,18 @@ if __name__ == "__main__":
         if ELITISM_TOLERANCE == int(num_generations/10):
             break
 
+        if IN_DEBUG_MODE == False:
+            clear_terminal()
         print("Best Accuracy: {}".format(best_accuracy))
         print("Dimensions of table {}x{}".format(len(population[index]), len(population[index][0])))
 
     # Get the best table of all the generations.
     best_accuracy, best_precision, best_recall, index = get_best_performance(accuracies, precisions, recalls)
 
-    if IN_DEBUG_MODE:
-        print("Best table: ")
-        print_table(population[index])
-    else:
+    if IN_DEBUG_MODE == False:
         clear_terminal()
-        print("Best table: ")
-        print_table(population[index])
+    print("Best table: ")
+    print_table(population[index])
 
     print()
     print("Final Results for Training Set")
@@ -552,8 +549,3 @@ if __name__ == "__main__":
     print("Prediction Set Y: {}".format(predicted_output_validation[index]))
     print("Validation Set Real Y: {}".format(validation_set[:,1:].tolist()))
     #print(validation_set.shape)
-
-# TODO: Agregar columnas
-# TODO: Quitar columnas
-# TODO: Elitismo (pasar la mejor a la siguiente generación con la mejor tabla)
-# TODO: Local search (ir agregando/quitando filas y evaluando accuracy)
