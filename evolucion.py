@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+# Luis Erick Zul Rabasa A00818663
+# Uriel Salazar Urquidi
+
 import random
 import numpy as np
 
@@ -22,10 +26,10 @@ TIMEOUTS = 0
 POP_SIZE = 100
 
 # columns -> language elements
-NUM_COLUMNS = 5
+NUM_COLUMNS = 10
 
 # rows -> number of states (minimum 3: initial, acceptance, rejection)
-NUM_ROWS = 5
+NUM_ROWS = 10
 
 MIN_COLUMN = 2
 MIN_ROW = 3
@@ -60,7 +64,7 @@ def random_state(numStates, numLetters):
   """
   next_state = random.randrange(0, numStates)
   replace_letter = random.randrange(0, numLetters)
-  movement = random.randrange(0, 2)
+  movement = random.randrange(0, 3)
   return { "next_state": next_state, "replace_letter": replace_letter, "movement": movement }
 
 def generate_random_population(num_rows, num_columns):
@@ -148,10 +152,15 @@ def predict(population, training_set):
 
                 transition = table[state][column_index]
 
-                #print("Transition: {}".format(transition))
-                next_state = transition["next_state"]
-                replace_letter = index_to_letter(transition["replace_letter"])
-                movement = transition["movement"]
+                next_state = None
+                replace_letter = None
+                movement = None
+                try:
+                    next_state = transition["next_state"]
+                    replace_letter = index_to_letter(transition["replace_letter"])
+                    movement = transition["movement"]
+                except TypeError:
+                    print(table)
 
                 state = next_state
                 if state >= len(table):
@@ -162,10 +171,6 @@ def predict(population, training_set):
                 if transition["replace_letter"] > NUM_COLUMNS:
                     replace_letter = index_to_letter(random.randrange(0, NUM_COLUMNS))
                 mod_example[head] = replace_letter
-
-                #print("Movement: {}".format(movement))
-                #print("State: {}".format(state))
-                #print("****")
 
                 if movement == 0:
                     head -= 1
@@ -186,7 +191,6 @@ def predict(population, training_set):
                 predict_row.append(False)
 
         predict_matrix.append(predict_row)
-        #print("---")
     return predict_matrix
 
 # Input: Training set, Predicted Output (matrix)
@@ -203,8 +207,6 @@ def calculate_performance(training_set, predicted_output_train):
     # Array with the accuracy values (0 to 1) for each of the training examples.
     accuracy = []
 
-    #print(predicted_output_train)
-
     training_set_y = list(training_set[:, training_set.shape[1]-1])
     for table_output in predicted_output_train:
         true_positives = 0
@@ -217,7 +219,6 @@ def calculate_performance(training_set, predicted_output_train):
                 real_value = False
             elif real_value == 1:
                 real_value = True
-            #print(real_value)
             if prediction == real_value:
                 if prediction is True:
                     true_positives += 1
@@ -228,10 +229,6 @@ def calculate_performance(training_set, predicted_output_train):
                     false_positives += 1
                 else:
                     false_negatives += 1
-        #print("True positives: {}".format(true_positives))
-        #print("True negatives: {}".format(true_negatives))
-        #print("False positives: {}".format(false_positives))
-        #print("False negatives: {}".format(false_negatives))
         if true_positives+false_positives == 0:
             precision.append(0)
         else:
@@ -245,8 +242,6 @@ def calculate_performance(training_set, predicted_output_train):
     return [accuracy, precision, recall]
 
 def shrink_population(population, accuracy):
-    global NUM_ROWS
-    global NUM_COLUMNS
     new_population = []
     if len(population[0]) > MIN_ROW:
         max_augment = int(MAX_AUGMENT_RATE*(1-accuracy))+1
@@ -256,11 +251,10 @@ def shrink_population(population, accuracy):
         new_column_size = len(population[0][0]) - max_augment
         if new_column_size < MIN_COLUMN:
             new_column_size = MIN_COLUMN
-        NUM_COLUMNS = new_column_size
         for table in population:
-            new_table = np.matrix(table)
-            new_table = new_table[0:new_row_size,0:new_column_size]
-            new_table = new_table.tolist()
+            new_table = table[:new_row_size]
+            for row in new_table:
+                row = row[:new_column_size]
             new_population.append(new_table)
         return new_population
     return population
@@ -271,28 +265,27 @@ def shrink_population(population, accuracy):
 #
 # This translates to: adding more states to the machine.
 def augment_population(population, accuracy):
-    global NUM_ROWS
-    global NUM_COLUMNS
     new_population = []
     if len(population[0]) < MAX_ROW:
         max_augment = int(MAX_AUGMENT_RATE*(1-accuracy))+1
         if max_augment == 1:
             return population
         append_size = random.randrange(1, max_augment)
-        NUM_ROWS += append_size
-        if NUM_ROWS > MAX_ROW:
-            NUM_ROWS = MAX_ROW
+        num_rows = NUM_ROWS + append_size
+        if num_rows > MAX_ROW:
+            num_rows = MAX_ROW
         append_size_columns = random.randrange(1, max_augment)
         prev_num_columns = NUM_COLUMNS
-        NUM_COLUMNS += append_size_columns
-        if NUM_COLUMNS > MAX_COLUMN:
-            NUM_COLUMNS = MAX_COLUMN
-        population_to_append = generate_random_population(NUM_ROWS-len(population[0]), NUM_COLUMNS)
+        num_columns = NUM_COLUMNS + append_size_columns
+        if num_columns > MAX_COLUMN:
+            num_columns = MAX_COLUMN
+        population_to_append = generate_random_population(num_rows-len(population[0]), num_columns)
         for append_table, table in zip(population_to_append, population):
             new_table = table[:]
             for row in new_table:
-                for i in range(0, NUM_COLUMNS-len(row)):
-                    row.append(random_state(NUM_COLUMNS, NUM_COLUMNS))
+                for i in range(0, num_columns-len(row)):
+                    new_state = random_state(num_rows, num_columns)
+                    row.append(new_state)
             for row in append_table:
                 new_table.append(row)
             new_population.append(new_table)
@@ -301,8 +294,6 @@ def augment_population(population, accuracy):
 
 # Input: Population, Accuracy List for each table in the population.
 def create_next_generation(population, accuracy=None, precision=None, recall=None, training_set=None):
-    new_population = []
-
     if accuracy is not None and training_set is not None:
         average_precision = 0
         average_recall = 0
@@ -316,11 +307,12 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             average_precision += performances[j][1]
             average_recall += performances[j][2]
             average_accuracy += performances[j][0]
-        average_precision = average_precision / int(len(performances)/2)
-        average_recall = average_recall / int(len(performances)/2)
+        average_precision = max(precision)
+        average_recall = max(recall)
         average_accuracy = max(accuracy)
 
-        if average_precision < 0.5 or max(accuracy) < 0.7:
+        if average_precision < 0.5 and average_accuracy < 0.7:
+            print("Trying to shrink the population.")
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
@@ -334,16 +326,16 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             dimensions_tried = []
 
             while max(shrink_accuracies) < average_accuracy and shrink_timeout < TIMEOUT_LIMIT:
+                shrink_timeout += 1
                 shrinked_population = shrink_population(population, average_accuracy)
-                if (len(shrinked_population[0]) in dimensions_tried):
+                if (len(shrinked_population[0]), len(shrinked_population[0][0])) in dimensions_tried:
                     continue
-                dimensions_tried.append(len(shrinked_population[0]))
-                if len(shrinked_population[0]) == len(population[0]):
+                dimensions_tried.append((len(shrinked_population[0]), len(shrinked_population[0][0])))
+                if (len(shrinked_population[0]), len(shrinked_population[0][0])) == (len(population[0]), len(population[0][0])):
                     continue
                 predicted_output_shrink = predict(shrinked_population, training_set)
                 shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                     predicted_output_shrink)
-                shrink_timeout += 1
 
             shrink_accuracies_sorted = shrink_accuracies[:]
             shrink_accuracies_sorted.sort(reverse=True)
@@ -355,12 +347,15 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                 accuracy = shrink_accuracies
                 precision = shrink_precisions
                 recall = shrink_recall
+                NUM_ROWS = len(population[0])
+                NUM_COLUMNS = len(population[0][0])
             else:
                 print("Shrinking didn't improve predictions.")
 
             if IN_DEBUG_MODE:
                 print("Shrink")
-        if average_recall < 0.5 or max(accuracy) < 0.7:
+        if average_recall < 0.5 and average_accuracy < 0.7:
+            print("Trying to augment the population.")
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
@@ -372,6 +367,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
 
             augment_timeout = 0
             while max(augment_accuracies) < average_accuracy and augment_timeout < TIMEOUT_LIMIT:
+                augment_timeout += 1
                 augmented_population = augment_population(population, average_accuracy)
                 predicted_output_augment = predict(augmented_population, training_set)
                 augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
@@ -386,34 +382,42 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                 accuracy = augment_accuracies
                 precision = augment_precisions
                 recall = augment_recall
+                NUM_ROWS = len(population[0])
+                NUM_COLUMNS = len(population[0][0])
             else:
                 print("Augmenting didn't improve predictions.")
 
             if IN_DEBUG_MODE:
                 print("Augment")
 
-    for table in population:
+    new_population = []
+    for i in range(0,POP_SIZE/2):
       #Pick Two Tables
       table_A, accuracy_A = pick_random_table(population, accuracy)
       table_B, accuracy_B = pick_random_table(population, accuracy)
 
+      new_table_A = None
+      new_table_B = None
       #Cross Them
       if accuracy_A is not None and accuracy_B is not None:
-          new_table = cross_over(table_A, table_B, (accuracy_A+accuracy_B)/2.0)
+          new_table_A, new_table_B = cross_over(table_A, table_B, (accuracy_A+accuracy_B)/2.0)
       else:
-          new_table = cross_over(table_A, table_B)
+          new_table_A, new_table_B = cross_over(table_A, table_B)
 
       #Mutate Table
       if accuracy_A is not None and accuracy_B is not None:
-          new_table = mutation(new_table, (accuracy_A+accuracy_B)/2.0)
+          new_table_A = mutation(new_table_A, (accuracy_A+accuracy_B)/2.0)
+          new_table_B = mutation(new_table_B, (accuracy_A+accuracy_B)/2.0)
       else:
-          new_table = mutation(new_table)
-      new_population.append(new_table)
+          new_table_A = mutation(new_table_A)
+          new_table_B = mutation(new_table_B)
+      new_population.append(new_table_A)
+      new_population.append(new_table_B)
     return new_population, True
 
 def cross_over(table_A, table_B, accuracy=0):
-    pos = int(random.randrange(1, len(table_A)-1))
-    return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
+    pos = random.randrange(1, len(table_A)-1)
+    return ([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # Input: Population, Accuracy List for each table in the population.
 def pick_random_table(population, accuracies):
@@ -425,13 +429,12 @@ def pick_random_table(population, accuracies):
       """
       weight_total = sum(accuracies)
       n = random.uniform(0, weight_total)
-      accuracy = None
+      table = None
       for table, accuracy in zip(population, accuracies):
         if n < accuracy:
           return table, accuracy
         n = n - accuracy
-      rand_index = random.randrange(0, len(population))
-      return population[rand_index], accuracies[rand_index]
+      return table
     rand_index = random.randrange(0, len(population))
     return population[rand_index], None
 
@@ -452,7 +455,7 @@ def mutation(table, accuracy=0):
                     new_table_state["replace_letter"] = random.randrange(0, NUM_COLUMNS)
                 # Movement
                 elif r == 3:
-                    new_table_state["movement"] = random.randrange(0, 2)
+                    new_table_state["movement"] = random.randrange(0, 3)
                 table[i][j] = new_table_state
 
     return table
@@ -530,7 +533,6 @@ if __name__ == "__main__":
             print("Best table: ")
             print_table(population[index])
         else:
-            #clear_terminal()
             print("Generation #{}".format(i+1))
             print("Elitism Tolerance: {}".format(ELITISM_TOLERANCE))
             print("Table dimensions {}x{}".format(len(population[0]), len(population[0][0])))
