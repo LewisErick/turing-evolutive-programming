@@ -35,8 +35,8 @@ MAX_ROW = 99
 
 MAX_AUGMENT_RATE = 10
 
-LANGUAGE = {"0": 0, "1": 1, " ": 2, "X": 3, "Y": 4}
-LANGUAGE_INDEX = ["0", "1", " ", "X", "Y"]
+LANGUAGE = {"0": 0, "1": 1, " ": 2}
+LANGUAGE_INDEX = ["0", "1", " "]
 
 INFINITE_TAPE_SIZE = 50
 TIMEOUT_LIMIT = 1000
@@ -44,6 +44,8 @@ TIMEOUT_LIMIT = 1000
 ELITISM_TOLERANCE = 0
 
 def index_to_letter(index):
+    if index > 2:
+        return chr(97 + index-3)
     return LANGUAGE_INDEX[index]
 
 #
@@ -65,7 +67,7 @@ def generate_random_population(num_rows, num_columns):
   tables = []
   for i in range(POP_SIZE):
     table = []
-    for row in range(num_columns):
+    for row in range(num_rows):
       table.append([])
       for column in range(num_columns):
         table[row].append(random_state(num_rows, num_columns))
@@ -89,6 +91,10 @@ def get_validation_set(parsed_input):
 # Maps the symbol to its index in the transition table.
 def matrix_column(symbol):
     try:
+        if symbol != "0" and symbol != "1" and symbol != " " and symbol != "":
+            return ord(symbol) - ord("a")
+        if symbol == "":
+            return 2
         return LANGUAGE[symbol]
     except KeyError:
         return 0
@@ -100,6 +106,7 @@ def matrix_column(symbol):
 #       training when run through the transition table.
 def predict(population, training_set):
     global TIMEOUTS
+    global NUM_COLUMNS
     training_set_x = training_set[:, 0:training_set.shape[1]-1]
     training_set_y = training_set[:, training_set.shape[1]-1:]
 
@@ -130,9 +137,15 @@ def predict(population, training_set):
                 else:
                     current_character = mod_example[head]
                 column_index = matrix_column(str(current_character))
+                if column_index >= NUM_COLUMNS:
+                    column_index = random.randrange(0, NUM_COLUMNS)
 
                 if state >= len(table):
-                    state = len(table)-1
+                    if len(table)-1 > 2:
+                        state = random.randrange(2, len(table)-1)
+                    else:
+                        state = len(table)-1
+
                 transition = table[state][column_index]
 
                 #print("Transition: {}".format(transition))
@@ -141,6 +154,13 @@ def predict(population, training_set):
                 movement = transition["movement"]
 
                 state = next_state
+                if state >= len(table):
+                    if len(table)-1 > 2:
+                        state = random.randrange(2, len(table)-1)
+                    else:
+                        state = len(table)-1
+                if transition["replace_letter"] > NUM_COLUMNS:
+                    replace_letter = index_to_letter(random.randrange(0, NUM_COLUMNS))
                 mod_example[head] = replace_letter
 
                 #print("Movement: {}".format(movement))
@@ -226,20 +246,24 @@ def calculate_performance(training_set, predicted_output_train):
 
 def shrink_population(population, accuracy):
     global NUM_ROWS
+    global NUM_COLUMNS
     new_population = []
     if len(population[0]) > MIN_ROW:
         max_augment = int(MAX_AUGMENT_RATE*(1-accuracy))+1
         new_row_size = len(population[0]) - max_augment
         if new_row_size < MIN_ROW:
             new_row_size = MIN_ROW
+        new_column_size = len(population[0][0]) - max_augment
+        if new_column_size < MIN_COLUMN:
+            new_column_size = MIN_COLUMN
+        NUM_COLUMNS = new_column_size
         for table in population:
             new_table = np.matrix(table)
-            new_table = new_table[0:new_row_size,:]
+            new_table = new_table[0:new_row_size,0:new_column_size]
             new_table = new_table.tolist()
             new_population.append(new_table)
         return new_population
-    else:
-        return population
+    return population
 
 
 # Adds more rows with randomly generated states to the Turing Machine transition
@@ -248,6 +272,7 @@ def shrink_population(population, accuracy):
 # This translates to: adding more states to the machine.
 def augment_population(population, accuracy):
     global NUM_ROWS
+    global NUM_COLUMNS
     new_population = []
     if len(population[0]) < MAX_ROW:
         max_augment = int(MAX_AUGMENT_RATE*(1-accuracy))+1
@@ -257,10 +282,17 @@ def augment_population(population, accuracy):
         NUM_ROWS += append_size
         if NUM_ROWS > MAX_ROW:
             NUM_ROWS = MAX_ROW
-        population_to_append = generate_random_population(append_size, NUM_COLUMNS)
+        append_size_columns = random.randrange(1, max_augment)
+        prev_num_columns = NUM_COLUMNS
+        NUM_COLUMNS += append_size_columns
+        if NUM_COLUMNS > MAX_COLUMN:
+            NUM_COLUMNS = MAX_COLUMN
+        population_to_append = generate_random_population(NUM_ROWS-len(population[0]), NUM_COLUMNS)
         for append_table, table in zip(population_to_append, population):
             new_table = table[:]
-
+            for row in new_table:
+                for i in range(0, NUM_COLUMNS-len(row)):
+                    row.append(random_state(NUM_COLUMNS, NUM_COLUMNS))
             for row in append_table:
                 new_table.append(row)
             new_population.append(new_table)
@@ -286,14 +318,14 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             average_accuracy += performances[j][0]
         average_precision = average_precision / int(len(performances)/2)
         average_recall = average_recall / int(len(performances)/2)
-        max_accuracy = max(accuracy)
+        average_accuracy = max(accuracy)
 
-        if average_precision < 0.5:
+        if average_precision < 0.5 or max(accuracy) < 0.7:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
 
-            shrinked_population = shrink_population(population, max_accuracy)
+            shrinked_population = shrink_population(population, average_accuracy)
             predicted_output_shrink = predict(shrinked_population, training_set)
             shrink_accuracies, shrink_precisions, shrink_recall = calculate_performance(training_set,
                 predicted_output_shrink)
@@ -301,8 +333,8 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
             shrink_timeout = 0
             dimensions_tried = []
 
-            while max(shrink_accuracies) < max_accuracy and shrink_timeout < TIMEOUT_LIMIT:
-                shrinked_population = shrink_population(population, max_accuracy)
+            while max(shrink_accuracies) < average_accuracy and shrink_timeout < TIMEOUT_LIMIT:
+                shrinked_population = shrink_population(population, average_accuracy)
                 if (len(shrinked_population[0]) in dimensions_tried):
                     continue
                 dimensions_tried.append(len(shrinked_population[0]))
@@ -313,37 +345,49 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
                     predicted_output_shrink)
                 shrink_timeout += 1
 
-            if max(shrink_accuracies) > max_accuracy:
+            shrink_accuracies_sorted = shrink_accuracies[:]
+            shrink_accuracies_sorted.sort(reverse=True)
+            if max(shrink_accuracies_sorted) > average_accuracy:
+                print("Shrinking improved predictions. New {} Prev {}".format(max(shrink_accuracies_sorted),
+                    average_accuracy))
                 shrinked = True
                 population = shrinked_population
                 accuracy = shrink_accuracies
                 precision = shrink_precisions
                 recall = shrink_recall
+            else:
+                print("Shrinking didn't improve predictions.")
 
             if IN_DEBUG_MODE:
                 print("Shrink")
-        if average_recall < 0.5:
+        if average_recall < 0.5 or max(accuracy) < 0.7:
             # Shrink population and verify that it's performance (accuracy)
             # is better after the transformation. If this doesn't happen
             # after a tiemout, the population is not shrinked.
 
-            augmented_population = augment_population(population, max_accuracy)
+            augmented_population = augment_population(population, average_accuracy)
             predicted_output_augment = predict(augmented_population, training_set)
             augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
                 predicted_output_augment)
 
             augment_timeout = 0
-            while max(augment_accuracies) < max_accuracy and augment_timeout < TIMEOUT_LIMIT:
-                augmented_population = augment_population(population, max_accuracy)
+            while max(augment_accuracies) < average_accuracy and augment_timeout < TIMEOUT_LIMIT:
+                augmented_population = augment_population(population, average_accuracy)
                 predicted_output_augment = predict(augmented_population, training_set)
                 augment_accuracies, augment_precisions, augment_recall = calculate_performance(training_set,
                     predicted_output_augment)
 
-            if max(augment_accuracies) > max_accuracy:
+            augment_accuracies_sorted = augment_accuracies[:]
+            augment_accuracies_sorted.sort(reverse=True)
+            if max(augment_accuracies) > average_accuracy:
+                print("Augmentation improved predictions. New {} Prev {}".format(max(augment_accuracies),
+                    average_accuracy))
                 population = augmented_population
                 accuracy = augment_accuracies
                 precision = augment_precisions
                 recall = augment_recall
+            else:
+                print("Augmenting didn't improve predictions.")
 
             if IN_DEBUG_MODE:
                 print("Augment")
@@ -368,7 +412,7 @@ def create_next_generation(population, accuracy=None, precision=None, recall=Non
     return new_population, True
 
 def cross_over(table_A, table_B, accuracy=0):
-    pos = int(random.randrange(int((len(table_A)-1)*(1-accuracy)), len(table_A)-1))
+    pos = int(random.randrange(1, len(table_A)-1))
     return random.choice([table_A[:pos] + table_B[pos:], table_B[:pos] + table_A[pos:]])
 
 # Input: Population, Accuracy List for each table in the population.
@@ -396,8 +440,7 @@ def pick_random_table(population, accuracies):
 # for all cells in the matrix.
 def mutation(table, accuracy=0):
     for i in range(0, len(table)):
-        for j in range(0, len(table[0])):
-            #TODO: variar la magnitud del -1000 en base al accuracy de la tabla.
+        for j in range(0, len(table[i])):
             r = random.randrange(int(-100*accuracy), 3)
             new_table_state = table[i][j]
             if r > 0:
@@ -481,17 +524,19 @@ if __name__ == "__main__":
             break
 
         if IN_DEBUG_MODE:
-            clear_terminal()
+            #clear_terminal()
             print("Elitism Tolerance: {}".format(ELITISM_TOLERANCE))
             print("Best accuracy: {}".format(best_accuracy))
             print("Best table: ")
             print_table(population[index])
         else:
-            clear_terminal()
+            #clear_terminal()
             print("Generation #{}".format(i+1))
             print("Elitism Tolerance: {}".format(ELITISM_TOLERANCE))
-            print("Best accuracy: {}".format(best_accuracy))
             print("Table dimensions {}x{}".format(len(population[0]), len(population[0][0])))
+            print("Best accuracy: {}".format(best_accuracy))
+            print("Best Precision: {}".format(best_precision))
+            print("Best Recall: {}".format(best_recall))
             #print("Best table: ")
             #print_table(population[index])
 
@@ -534,7 +579,7 @@ if __name__ == "__main__":
     print("Best Precision: {}".format(best_precision))
     print("Best Recall: {}".format(best_recall))
     print("Prediction Set Y: {}".format(predicted_output_validation[index]))
-    #print("Validation Set Y: {}".format(validation_set[:,1:].tolist()))
+    print("Validation Set Real Y: {}".format(validation_set[:,1:].tolist()))
     #print(validation_set.shape)
 
 # TODO: Agregar columnas
